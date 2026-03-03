@@ -174,6 +174,41 @@ body {
   visibility: visible;
 }
 
+#music-toggle-btn {
+    /* 1. 设置背景图片 */
+    background-image: url('head.jpg'); /* 替换为你的图片路径 */
+    background-size: cover;     /* 图片撑满全圆 */
+    background-position: center; /* 图片居中 */
+    background-repeat: no-repeat;
+
+    /* 2. 形状与大小控制 */
+    width: 50px;               /* 确保宽高一致才是圆 */
+    height: 50px;
+    border-radius: 50%;        /* 强制变成圆形 */
+    
+    /* 3. 视觉优化 */
+    border: 2px solid rgba(255, 255, 255, 0.5); /* 给球加个白边，更精致 */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);  /* 加点阴影，有立体感 */
+    
+    /* 4. 清理原有样式 */
+    background-color: transparent; /* 去掉原有的背景色 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.3s ease; /* 增加鼠标悬停动画 */
+}
+
+/* 鼠标悬停时小球放大一点 */
+#music-toggle-btn:hover {
+    transform: scale(1.1);
+}
+
+/* 如果你想让原有的 SVG 图标消失，只看图片 */
+#music-toggle-btn svg {
+    display: none; 
+}
+
 /* 面板方向微调 */
 #music-panel.panel-right  { right: 72px; top: 50%; transform: translateY(-50%) scale(1); }
 #music-panel.panel-left   { left: 72px;  top: 50%; transform: translateY(-50%) scale(1); }
@@ -290,6 +325,40 @@ body {
   #starfield-controls { right: 12px; min-width: 220px; max-width: 280px; }
   #music-toggle-btn { width: 52px; height: 52px; }
   .btn { width: 40px; height: 40px; }
+}
+
+#quote-container {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  max-width: 300px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.4); /* 半透明背景 */
+  backdrop-filter: blur(5px);    /* 毛玻璃效果 */
+  border-radius: 8px;
+  border-left: 3px solid #7aa2f7; /* 左侧点缀条 */
+  color: #ffffff;
+  z-index: 100;                  /* 确保在星空之上 */
+  transition: opacity 0.5s ease;  /* 切换时的淡入淡出 */
+  pointer-events: none;          /* 防止遮挡点击操作 */
+}
+
+#quote-content {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+#quote-author {
+  font-size: 0.8rem;
+  text-align: right;
+  opacity: 0.8;
+}
+
+/* 切换状态的动画类 */
+.quote-fade {
+  opacity: 0;
 }
 
 .diary-list { display: flex; flex-direction: column; gap: 1.2rem; margin-top: 2rem; }

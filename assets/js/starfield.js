@@ -1,5 +1,4 @@
-// starfield.js - Grok 风格动态星空（带实时滑块调节 + 远离重置）
-
+// starfield.js - 基于绝对时间的强效呼吸版本（优化：任意方向远离都不会黑屏）
 const canvas = document.getElementById('starfield');
 const ctx = canvas.getContext('2d');
 
@@ -9,8 +8,8 @@ let shootingStars = [];
 
 // ──────────────── 可调节参数 ────────────────
 const CONFIG = {
-  starDirection: 1,             // 1 = 向前（靠近），-1 = 向后（远离）
-  starSpeedAbs: 0.6,            // 速度绝对值（与滑块联动）
+  starDirection: 1,             
+  starSpeedAbs: 0.6,            
   horizontalDrift: 0.0,
   verticalDrift: 0.0,
   starCount: 800,
@@ -19,9 +18,8 @@ const CONFIG = {
   meteorSpeedMax: 19,
   meteorAngleMin: Math.PI / 4,
   meteorAngleMax: Math.PI * 1.2,
-  maxZ: 2200                    // 远离时的重置上限（越大消失越慢）
+  maxZ: 2200                    
 };
-// ──────────────────────────────────────────────
 
 function resize() {
   width = canvas.width = window.innerWidth;
@@ -39,11 +37,12 @@ function createStars() {
       y: Math.random() * height,
       z: Math.random() * 1000 + 1,
       size: Math.random() * 1.2 + 0.3,
-      brightness: Math.random() * 0.5 + 0.5
+      brightness: Math.random() * 0.5 + 0.5,
+      phase: Math.random() * Math.PI * 2,
+      freq: 0.65 + Math.random() * 1.1
     });
   }
 }
-
 createStars();
 
 function createShootingStar() {
@@ -52,14 +51,10 @@ function createShootingStar() {
     const speed = Math.random() * (CONFIG.meteorSpeedMax - CONFIG.meteorSpeedMin) + CONFIG.meteorSpeedMin;
     const vx = Math.cos(angle) * speed;
     const vy = Math.sin(angle) * speed;
-
     let startX = vx > 0 ? -80 : width + 80;
     let startY = vy > 0 ? -80 : height + 80;
-
     shootingStars.push({
-      x: startX,
-      y: startY,
-      vx, vy,
+      x: startX, y: startY, vx, vy,
       length: Math.random() * 90 + 60,
       opacity: 1,
       fadeSpeed: 0.012 + Math.random() * 0.008
@@ -71,35 +66,41 @@ function animate() {
   ctx.fillStyle = 'rgba(0, 0, 0, 0.07)';
   ctx.fillRect(0, 0, width, height);
 
-  // 绘制星星
+  const time = Date.now() / 190;
+
   stars.forEach(star => {
-    // 统一计算移动速度（方向 × 绝对速度）
+    // 移动逻辑
     const effectiveSpeed = CONFIG.starDirection * CONFIG.starSpeedAbs;
     star.z -= effectiveSpeed;
-
     star.x += CONFIG.horizontalDrift;
     star.y += CONFIG.verticalDrift;
 
-    // 向前时 z <= 0 重置（靠近消失）
+    // ──────── 关键优化：任意方向都不会清屏 ────────
     if (star.z <= 0) {
-      star.z = 1000;
+      // 向前飞出 → 从远处补充新星星
+      star.z = CONFIG.maxZ;
+      star.x = Math.random() * width;
+      star.y = Math.random() * height;
+    }
+    if (star.z >= CONFIG.maxZ) {
+      // 向后飞远 → 从近处不断补充新星星
+      star.z = Math.random() * 320 + 25;
       star.x = Math.random() * width;
       star.y = Math.random() * height;
     }
 
-    // 向后时 z > maxZ 重置（远离消失，从近处重新出现）
-    if (star.z > CONFIG.maxZ) {
-      star.z = Math.random() * 400 + 1;  // 从近处（大星星）重新生成
-      star.x = Math.random() * width;
-      star.y = Math.random() * height;
-      star.brightness = Math.random() * 0.4 + 0.6; // 重新亮一点
-    }
-
+    // 屏幕投影坐标
     const sx = (star.x - width / 2) * (1000 / star.z) + width / 2;
     const sy = (star.y - height / 2) * (1000 / star.z) + height / 2;
-
     const size = star.size * (1000 / star.z);
-    const opacity = star.brightness * (1000 / star.z);
+
+    let opacity = star.brightness * (1000 / star.z);
+
+    // 速度为0时的呼吸效果
+    if (Math.abs(CONFIG.starSpeedAbs) < 0.01) {
+      const breathing = (Math.sin(time * star.freq + star.phase) + 1) / 2; 
+      opacity *= (0.05 + 0.95 * breathing); 
+    }
 
     ctx.beginPath();
     ctx.arc(sx, sy, size, 0, Math.PI * 2);
@@ -111,128 +112,96 @@ function animate() {
     }
   });
 
-  // 流星部分
+  // 流星逻辑
   shootingStars = shootingStars.filter(meteor => {
-    meteor.x += meteor.vx;
-    meteor.y += meteor.vy;
+    meteor.x += meteor.vx; meteor.y += meteor.vy;
     meteor.opacity -= meteor.fadeSpeed;
-
-    if (meteor.opacity <= 0 ||
-        meteor.x < -150 || meteor.x > width + 150 ||
-        meteor.y < -150 || meteor.y > height + 150) {
-      return false;
-    }
-
+    if (meteor.opacity <= 0) return false;
     ctx.beginPath();
     ctx.moveTo(meteor.x, meteor.y);
-    const tailX = meteor.x - meteor.vx * (meteor.length / Math.hypot(meteor.vx, meteor.vy));
-    const tailY = meteor.y - meteor.vy * (meteor.length / Math.hypot(meteor.vx, meteor.vy));
+    const dist = Math.hypot(meteor.vx, meteor.vy);
+    const tailX = meteor.x - meteor.vx * (meteor.length / dist);
+    const tailY = meteor.y - meteor.vy * (meteor.length / dist);
     ctx.lineTo(tailX, tailY);
-
-    const gradient = ctx.createLinearGradient(meteor.x, meteor.y, tailX, tailY);
-    gradient.addColorStop(0, `rgba(255, 245, 220, ${meteor.opacity * 0.95})`);
-    gradient.addColorStop(1, `rgba(180, 210, 255, 0)`);
-
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = 2.2 + Math.random() * 1.2;
-    ctx.lineCap = 'round';
+    ctx.strokeStyle = `rgba(255, 245, 220, ${meteor.opacity})`;
+    ctx.lineWidth = 2;
     ctx.stroke();
-
     return true;
   });
 
   createShootingStar();
-
   requestAnimationFrame(animate);
 }
 
-// ─── 滑块控制逻辑 ───
-const ctrlStarSpeedAbs = document.getElementById('ctrl-starspeed-abs');
-const ctrlStarDir     = document.getElementById('ctrl-stardir');
-const ctrlHorizontal  = document.getElementById('ctrl-hdrift');
-const ctrlVertical    = document.getElementById('ctrl-vdrift');
-const ctrlMeteorFreq  = document.getElementById('ctrl-meteorfreq');
-
-const valStarSpeedAbs = document.getElementById('val-starspeed-abs');
-const valStarDir      = document.getElementById('val-stardir');
-const valHorizontal   = document.getElementById('val-hdrift');
-const valVertical     = document.getElementById('val-vdrift');
-const valMeteorFreq   = document.getElementById('val-meteorfreq');
-
-if (ctrlStarSpeedAbs && ctrlStarDir && ctrlHorizontal && ctrlVertical && ctrlMeteorFreq) {
-  // 初始同步
-  valStarSpeedAbs.textContent = ctrlStarSpeedAbs.value;
-  valStarDir.textContent      = ctrlStarDir.value === '1' ? '向前' : '向后';
-  valHorizontal.textContent   = ctrlHorizontal.value;
-  valVertical.textContent     = ctrlVertical.value;
-  valMeteorFreq.textContent   = ctrlMeteorFreq.value;
-
-  // 实时更新
-  ctrlStarSpeedAbs.oninput = () => {
-    CONFIG.starSpeedAbs = parseFloat(ctrlStarSpeedAbs.value);
-    valStarSpeedAbs.textContent = ctrlStarSpeedAbs.value;
-  };
-
-  ctrlStarDir.onchange = () => {
-    CONFIG.starDirection = parseInt(ctrlStarDir.value);
-    valStarDir.textContent = CONFIG.starDirection === 1 ? '向前' : '向后';
-  };
-
-  ctrlHorizontal.oninput = () => {
-    CONFIG.horizontalDrift = parseFloat(ctrlHorizontal.value);
-    valHorizontal.textContent = ctrlHorizontal.value;
-  };
-
-  ctrlVertical.oninput = () => {
-    CONFIG.verticalDrift = parseFloat(ctrlVertical.value);
-    valVertical.textContent = ctrlVertical.value;
-  };
-
-  ctrlMeteorFreq.oninput = () => {
-    CONFIG.meteorFrequency = parseFloat(ctrlMeteorFreq.value);
-    valMeteorFreq.textContent = ctrlMeteorFreq.value;
+// 滑块事件绑定（保持不变）
+const s_speed = document.getElementById('ctrl-starspeed-abs');
+const v_speed = document.getElementById('val-starspeed-abs');
+if(s_speed) {
+  s_speed.oninput = () => {
+    CONFIG.starSpeedAbs = parseFloat(s_speed.value);
+    if(v_speed) v_speed.textContent = s_speed.value;
   };
 }
 
-// 启动动画
-animate();
+const s_dir = document.getElementById('ctrl-stardir');
+const v_dir = document.getElementById('val-stardir');
+if(s_dir) {
+  s_dir.onchange = () => {
+    CONFIG.starDirection = parseInt(s_dir.value);
+    if(v_dir) v_dir.textContent = CONFIG.starDirection === 1 ? '向前' : '向后';
+  };
+}
 
-// 鼠标视差（可选）
-let mouseX = width / 2;
-let mouseY = height / 2;
+const s_hdrift = document.getElementById('ctrl-hdrift');
+const v_hdrift = document.getElementById('val-hdrift');
+if(s_hdrift) {
+  s_hdrift.oninput = () => {
+    CONFIG.horizontalDrift = parseFloat(s_hdrift.value);
+    if(v_hdrift) v_hdrift.textContent = s_hdrift.value;
+  };
+}
 
-window.addEventListener('mousemove', e => {
-  mouseX = e.clientX;
-  mouseY = e.clientY;
-});
+const s_vdrift = document.getElementById('ctrl-vdrift');
+const v_vdrift = document.getElementById('val-vdrift');
+if(s_vdrift) {
+  s_vdrift.oninput = () => {
+    CONFIG.verticalDrift = parseFloat(s_vdrift.value);
+    if(v_vdrift) v_vdrift.textContent = s_vdrift.value;
+  };
+}
 
-// ─── 展开/收起星空控制面板 ───
+const s_meteor = document.getElementById('ctrl-meteorfreq');
+const v_meteor = document.getElementById('val-meteorfreq');
+if(s_meteor) {
+  s_meteor.oninput = () => {
+    CONFIG.meteorFrequency = parseFloat(s_meteor.value);
+    if(v_meteor) v_meteor.textContent = s_meteor.value;
+  };
+}
+
+// 启动
+requestAnimationFrame(animate);
+
+// 控制面板开关逻辑（保持不变）
 const toggleBtn = document.getElementById('starfield-toggle-btn');
 const controls = document.getElementById('starfield-controls');
 const closeBtn = document.getElementById('starfield-close-btn');
 
 if (toggleBtn && controls) {
-  toggleBtn.onclick = () => {
+  toggleBtn.onclick = (e) => {
+    e.stopPropagation();
     const isHidden = controls.style.opacity === '0' || controls.style.opacity === '';
     controls.style.opacity = isHidden ? '1' : '0';
     controls.style.transform = isHidden ? 'translateY(0)' : 'translateY(-10px)';
     controls.style.pointerEvents = isHidden ? 'auto' : 'none';
   };
-
-  // 点击关闭按钮收起
-  if (closeBtn) {
-    closeBtn.onclick = () => {
-      controls.style.opacity = '0';
-      controls.style.transform = 'translateY(-10px)';
-      controls.style.pointerEvents = 'none';
-    };
-  }
-
-  // 可选：点击页面其他地方收起（防止误触）
+  if (closeBtn) closeBtn.onclick = () => {
+    controls.style.opacity = '0';
+    controls.style.pointerEvents = 'none';
+  };
   document.addEventListener('click', e => {
     if (!controls.contains(e.target) && !toggleBtn.contains(e.target)) {
       controls.style.opacity = '0';
-      controls.style.transform = 'translateY(-10px)';
       controls.style.pointerEvents = 'none';
     }
   });

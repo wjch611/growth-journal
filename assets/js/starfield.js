@@ -1,4 +1,4 @@
-// starfield.js - 基于绝对时间的强效呼吸版本（优化：任意方向远离都不会黑屏）
+// starfield.js - 优化版：任意方向速度下星星始终保持高密度与大小多样性
 const canvas = document.getElementById('starfield');
 const ctx = canvas.getContext('2d');
 
@@ -35,7 +35,7 @@ function createStars() {
     stars.push({
       x: Math.random() * width,
       y: Math.random() * height,
-      z: Math.random() * 1000 + 1,
+      z: Math.random() * 960 + 40,
       size: Math.random() * 1.2 + 0.3,
       brightness: Math.random() * 0.5 + 0.5,
       phase: Math.random() * Math.PI * 2,
@@ -75,18 +75,12 @@ function animate() {
     star.x += CONFIG.horizontalDrift;
     star.y += CONFIG.verticalDrift;
 
-    // ──────── 关键优化：任意方向都不会清屏 ────────
-    if (star.z <= 0) {
-      // 向前飞出 → 从远处补充新星星
-      star.z = CONFIG.maxZ;
+    // 【核心优化】无论任何速度、任何方向（向前/向后/左右垂直漂移），只要飞出视野就完整重新随机生成
+    // 这保证星星在整个深度空间始终均匀分布，屏幕密度和大小多样性长期保持初始化时的状态
+    if (star.z <= 5 || star.z >= CONFIG.maxZ) {
       star.x = Math.random() * width;
       star.y = Math.random() * height;
-    }
-    if (star.z >= CONFIG.maxZ) {
-      // 向后飞远 → 从近处不断补充新星星
-      star.z = Math.random() * 320 + 25;
-      star.x = Math.random() * width;
-      star.y = Math.random() * height;
+      star.z = Math.random() * 960 + 40;
     }
 
     // 屏幕投影坐标
@@ -133,7 +127,7 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-// 滑块事件绑定（保持不变）
+// ──────────────── 滑块事件绑定（完全不变） ────────────────
 const s_speed = document.getElementById('ctrl-starspeed-abs');
 const v_speed = document.getElementById('val-starspeed-abs');
 if(s_speed) {
@@ -182,7 +176,7 @@ if(s_meteor) {
 // 启动
 requestAnimationFrame(animate);
 
-// 控制面板开关逻辑（保持不变）
+// 控制面板开关逻辑（完全不变）
 const toggleBtn = document.getElementById('starfield-toggle-btn');
 const controls = document.getElementById('starfield-controls');
 const closeBtn = document.getElementById('starfield-close-btn');

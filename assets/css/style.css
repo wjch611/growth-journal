@@ -62,7 +62,7 @@ body {
 }
 
 /* ==================== 左侧导航美化（仅此部分优化） ==================== */
-/* 触发按钮（左中侧，紧贴边缘，美化玻璃+呼吸效果） */
+/* 触发按钮（左中侧，可拖动，玻璃+呼吸效果） */
 #sidebar-toggle-btn {
   position: fixed;
   left: 1.5rem;
@@ -76,7 +76,7 @@ body {
   background: linear-gradient(145deg, #1e1e4a, #0f0f2d);
   backdrop-filter: blur(14px);
   color: var(--accent);
-  cursor: pointer;
+  cursor: grab;
   box-shadow: 0 0 15px rgba(167, 139, 250, 0.25), 
               0 8px 25px rgba(0,0,0,0.5);
   border: 1px solid rgba(167, 139, 250, 0.35);
@@ -84,7 +84,7 @@ body {
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  transition: opacity 0.35s ease; /* 新增：让按钮消失时更丝滑 */
+  user-select: none;
 }
 
 #sidebar-toggle-btn::after {
@@ -107,12 +107,17 @@ body {
   color: #ffffff;
 }
 
-/* 导航栏本体（默认隐藏 + 紧贴左侧 + 丝滑滑入） */
+#sidebar-toggle-btn.dragging {
+  cursor: grabbing;
+  transition: none !important;
+}
+
+/* 导航栏本体（默认隐藏 + 动态位置 + 丝滑滑入） */
 .sidebar {
   position: fixed;
-  left: -220px;                    /* 默认隐藏在左侧外（宽度适配后调整） */
-  top: 50%;
-  transform: translateY(-50%);
+  left: -9999px;
+  top: 0;
+  transform: none;
   z-index: 9999;
   background: rgba(20, 20, 45, 0.92);
   backdrop-filter: blur(20px);
@@ -120,14 +125,13 @@ body {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   border-radius: 1.4rem;
   padding: 1.2rem 0.8rem;
-  width: 195px;                    /* 优化：稍微窄一点（比原来220px窄25px），但绝不会让文字换行 */
+  width: 195px;
   opacity: 0;
   visibility: hidden;
   transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .sidebar.show {
-  left: 1.2rem;                    /* 紧贴左侧边缘（附着左中侧） */
   opacity: 1;
   visibility: visible;
   box-shadow: 0 15px 50px rgba(120, 140, 255, 0.3);
@@ -139,7 +143,7 @@ body {
   gap: 0.4rem;
 }
 
-/* 导航项美化（保持原有hover，但增强玻璃质感） */
+/* 导航项美化 */
 .nav-item {
   display: flex;
   align-items: center;
@@ -241,78 +245,57 @@ body {
 }
 
 #music-toggle-btn {
-    /* 1. 设置背景图片 */
-    background-image: url('head.jpg'); /* 替换为你的图片路径 */
-    background-size: cover;     /* 图片撑满全圆 */
-    background-position: center; /* 图片居中 */
+    background-image: url('head.jpg');
+    background-size: cover;
+    background-position: center;
     background-repeat: no-repeat;
-
-    /* 2. 形状与大小控制 */
-    width: 50px;               /* 确保宽高一致才是圆 */
+    width: 50px;
     height: 50px;
-    border-radius: 50%;        /* 强制变成圆形 */
-    
-    /* 3. 视觉优化 */
-    border: 2px solid rgba(255, 255, 255, 0.5); /* 给球加个白边，更精致 */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);  /* 加点阴影，有立体感 */
-    
-    /* 4. 清理原有样式 */
-    background-color: transparent; /* 去掉原有的背景色 */
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    background-color: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.3s ease; /* 增加鼠标悬停动画 */
+    transition: transform 0.3s ease;
 }
 
-/* 鼠标悬停时小球放大一点 */
 #music-toggle-btn:hover {
     transform: scale(1.1);
 }
 
-/* 如果你想让原有的 SVG 图标消失，只看图片 */
 #music-toggle-btn svg {
     display: none; 
 }
 
-
-/* 定义旋转动画 */
 @keyframes disk-rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* 播放时的状态 */
 #music-toggle-btn.is-playing {
-  /* 5秒转一圈，线性无限循环 */
   animation: disk-rotate 5s linear infinite;
-  /* 确保边框和阴影在旋转时看起来很稳 */
   border-color: rgba(255, 255, 255, 0.8);
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
-/* 鼠标悬停时如果正在旋转，可以稍微放大一点，增加互动感 */
 #music-toggle-btn.is-playing:hover {
-  animation-play-state: paused; /* 悬停时暂停旋转，方便看清图片，可选 */
+  animation-play-state: paused;
 }
 
-/* 面板方向微调 */
 #music-panel.panel-right  { right: 72px; top: 50%; transform: translateY(-50%) scale(1); }
 #music-panel.panel-left   { left: 72px;  top: 50%; transform: translateY(-50%) scale(1); }
 #music-panel.panel-bottom { bottom: 72px; left: 50%; transform: translateX(-50%) scale(1); }
 #music-panel.panel-top    { top: 72px;    left: 50%; transform: translateX(-50%) scale(1); }
 
-/* 内部按钮组美化 */
 .music-player-inner {
   display: flex;
   gap: 12px;
   padding: 4px;
 }
-/* 当垂直排列时的处理 */
+
 #music-panel.panel-left .music-player-inner, 
 #music-panel.panel-right .music-player-inner {
   flex-direction: row;
@@ -424,14 +407,14 @@ body {
   bottom: 20px;
   max-width: 300px;
   padding: 15px;
-  background: rgba(0, 0, 0, 0.4); /* 半透明背景 */
-  backdrop-filter: blur(5px);    /* 毛玻璃效果 */
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px);
   border-radius: 8px;
-  border-left: 3px solid #7aa2f7; /* 左侧点缀条 */
+  border-left: 3px solid #7aa2f7;
   color: #ffffff;
-  z-index: 100;                  /* 确保在星空之上 */
-  transition: opacity 0.5s ease;  /* 切换时的淡入淡出 */
-  pointer-events: none;          /* 防止遮挡点击操作 */
+  z-index: 100;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
 }
 
 #quote-content {

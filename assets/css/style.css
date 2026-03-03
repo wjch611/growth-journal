@@ -61,24 +61,90 @@ body {
   padding: 1.8rem 0;
 }
 
-/* 左侧导航 */
-.sidebar {
+/* ==================== 左侧导航美化（仅此部分优化） ==================== */
+/* 触发按钮（左中侧，紧贴边缘，美化玻璃+呼吸效果） */
+#sidebar-toggle-btn {
   position: fixed;
-  left: 2rem;
+  left: 1.5rem;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 5;
-  background: rgba(20, 20, 45, calc(var(--content-bg-opacity) * 0.9 + 0.1));
-  backdrop-filter: blur(calc(var(--content-bg-opacity) * 12px));
-  border: 1px solid rgba(100, 100, 255, 0.18);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, calc(var(--content-bg-opacity) * 0.45));
-  border-radius: 1rem;
+  z-index: 10000;
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #1e1e4a, #0f0f2d);
+  backdrop-filter: blur(14px);
+  color: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.25), 
+              0 8px 25px rgba(0,0,0,0.5);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  transition: opacity 0.35s ease; /* 新增：让按钮消失时更丝滑 */
 }
+
+#sidebar-toggle-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.18) 0%, transparent 70%);
+  animation: sidebar-pulse 3.2s infinite ease-in-out;
+}
+
+@keyframes sidebar-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.18); opacity: 0.25; }
+}
+
+#sidebar-toggle-btn:hover {
+  transform: translateY(-50%) scale(1.12);
+  box-shadow: 0 0 25px rgba(167, 139, 250, 0.45);
+  color: #ffffff;
+}
+
+/* 导航栏本体（默认隐藏 + 紧贴左侧 + 丝滑滑入） */
+.sidebar {
+  position: fixed;
+  left: -220px;                    /* 默认隐藏在左侧外（宽度适配后调整） */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 9999;
+  background: rgba(20, 20, 45, 0.92);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(120, 140, 255, 0.25);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  border-radius: 1.4rem;
+  padding: 1.2rem 0.8rem;
+  width: 195px;                    /* 优化：稍微窄一点（比原来220px窄25px），但绝不会让文字换行 */
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sidebar.show {
+  left: 1.2rem;                    /* 紧贴左侧边缘（附着左中侧） */
+  opacity: 1;
+  visibility: visible;
+  box-shadow: 0 15px 50px rgba(120, 140, 255, 0.3);
+}
+
+.sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* 导航项美化（保持原有hover，但增强玻璃质感） */
 .nav-item {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  padding: 0.9rem 1.2rem;
+  padding: 0.95rem 1.3rem;
   font-size: 1.1rem;
   font-weight: 500;
   text-decoration: none;
@@ -88,9 +154,9 @@ body {
 }
 .nav-item:hover {
   color: #ffffff;
-  background: linear-gradient(135deg, rgba(100, 120, 255, 0.25), rgba(160, 140, 255, 0.18));
-  transform: translateX(6px);
-  box-shadow: 0 4px 20px rgba(120, 140, 255, 0.35);
+  background: linear-gradient(135deg, rgba(100, 120, 255, 0.28), rgba(160, 140, 255, 0.22));
+  transform: translateX(8px);
+  box-shadow: 0 4px 22px rgba(120, 140, 255, 0.4);
 }
 
 /* ==================== 音乐控件：极致美化版 ==================== */

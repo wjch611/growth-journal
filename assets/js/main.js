@@ -1,5 +1,26 @@
-// main.js - 修复版：支持上下左右四边吸附 + 面板智能方向展开 + 完美区分点击与拖拽
+// main.js - 修复版：自动适配 GitHub Pages 二级目录与本地环境
 const contentEl = document.getElementById('content');
+
+// ========== 路径修复逻辑：自动识别 GitHub 仓库名 ==========
+const getBasePath = () => {
+  // 如果是在 GitHub Pages 访问 (路径中包含仓库名)
+  if (window.location.hostname.includes('github.io')) {
+    return '/growth-journal/'; 
+  }
+  // 本地开发通常直接在根目录
+  return '/';
+};
+
+const BASE_PATH = getBasePath();
+
+// 辅助函数：确保路径拼接正确，不重复斜杠且包含 BASE_PATH
+const fixUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('blob')) return url;
+  // 去掉 url 开头的斜杠
+  const cleanUrl = url.replace(/^\//, '');
+  return BASE_PATH + cleanUrl;
+};
 
 // 配置
 const ITEMS_PER_PAGE = 3;
@@ -90,7 +111,10 @@ function showError(message, detail = '') {
 
 function loadMarkdown(url, currentIndex = -1) {
   showLoading();
-  fetch(url)
+  // 修复路径
+  const fetchUrl = fixUrl(url);
+
+  fetch(fetchUrl)
     .then(res => {
       if (!res.ok) throw new Error(`文件加载失败 (${res.status})`);
       return res.text();
@@ -103,12 +127,12 @@ function loadMarkdown(url, currentIndex = -1) {
         if (currentIndex > 0) {
           const prev = allEntries[currentIndex - 1];
           const prevFilename = prev.filename || (prev.date ? `${prev.date}.md` : null);
-          if (prevFilename) finalHtml += `<a href="/entries/${prevFilename}" class="nav-link prev" data-entry-link style="margin:0 2.5rem; color:#a78bfa; text-decoration:none;">← 上一篇</a>`;
+          if (prevFilename) finalHtml += `<a href="entries/${prevFilename}" class="nav-link prev" data-entry-link style="margin:0 2.5rem; color:#a78bfa; text-decoration:none;">← 上一篇</a>`;
         }
         if (currentIndex < allEntries.length - 1) {
           const next = allEntries[currentIndex + 1];
           const nextFilename = next.filename || (next.date ? `${next.date}.md` : null);
-          if (nextFilename) finalHtml += `<a href="/entries/${nextFilename}" class="nav-link next" data-entry-link style="margin:0 2.5rem; color:#a78bfa; text-decoration:none;">下一篇 →</a>`;
+          if (nextFilename) finalHtml += `<a href="entries/${nextFilename}" class="nav-link next" data-entry-link style="margin:0 2.5rem; color:#a78bfa; text-decoration:none;">下一篇 →</a>`;
         }
         finalHtml += '</div>';
       }
@@ -116,7 +140,10 @@ function loadMarkdown(url, currentIndex = -1) {
       const h1 = contentEl.querySelector('h1');
       document.title = h1 ? h1.textContent.trim() + ' | 我的成长日记' : '我的成长日记';
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-      history.pushState({ type: 'md', url, index: currentIndex }, '', url);
+      
+      // 注意：pushState 的路径也需要修复
+      history.pushState({ type: 'md', url: fetchUrl, index: currentIndex }, '', fetchUrl);
+      
       contentEl.querySelectorAll('[data-entry-link]').forEach(link => {
         link.addEventListener('click', e => {
           e.preventDefault();
@@ -131,7 +158,7 @@ function loadMarkdown(url, currentIndex = -1) {
     })
     .catch(err => {
       console.error(err);
-      showError('无法加载文章', err.message + '<br>请确认文件路径是否正确');
+      showError('无法加载文章', err.message + '<br>请求地址: ' + fetchUrl);
     });
 }
 
@@ -171,7 +198,7 @@ function renderDiaryList(page = 1) {
     const title = item.title || '未命名日记';
     const preview = item.preview || '(无摘要)';
     html += `
-      <a href="/entries/${filename}" class="diary-item" data-entry-link>
+      <a href="entries/${filename}" class="diary-item" data-entry-link>
         <div class="diary-date">${displayDate}</div>
         <div class="diary-title">${title}</div>
         <div class="diary-preview">${preview}</div>
@@ -221,7 +248,10 @@ function loadAllEntries() {
       return;
     }
 
-    fetch(possibleUrls[attempt])
+    // 使用 fixUrl 修复 index.json 的请求路径
+    const fetchUrl = fixUrl(possibleUrls[attempt]);
+
+    fetch(fetchUrl)
       .then(res => {
         if (!res.ok) throw new Error(`加载失败 (${res.status})`);
         return res.json();
@@ -244,7 +274,7 @@ function loadAllEntries() {
         history.pushState({ type: 'list' }, '', '#all');
       })
       .catch(err => {
-        console.warn(`尝试 ${possibleUrls[attempt]} 失败:`, err);
+        console.warn(`尝试 ${fetchUrl} 失败:`, err);
         attempt++;
         tryNext();
       });
@@ -256,7 +286,7 @@ function loadAllEntries() {
 function initMusicWidget() {
   const toggleBtn = document.getElementById('music-toggle-btn');
   const panel = document.getElementById('music-panel');
-  const bgm = document.getElementById('bgm'); // 获取音频元素
+  const bgm = document.getElementById('bgm'); 
   if (!toggleBtn || !panel) return;
 
   const widget = document.createElement('div');
@@ -269,7 +299,6 @@ function initMusicWidget() {
   let hasMoved = false;
   let startX, startY, widgetStartX, widgetStartY;
 
-  // 读取存档位置
   const savedX = localStorage.getItem('musicPosX');
   const savedY = localStorage.getItem('musicPosY');
   if (savedX !== null && savedY !== null) {
@@ -281,13 +310,11 @@ function initMusicWidget() {
     widget.style.top = '45%';
   }
 
-  // 智能更新面板弹出方向
   function updatePanelDirection() {
     const rect = widget.getBoundingClientRect();
     const winW = window.innerWidth;
     const winH = window.innerHeight;
 
-    // 清除旧的方向类
     panel.classList.remove('panel-left', 'panel-right', 'panel-top', 'panel-bottom');
 
     const distToLeft = rect.left;
@@ -295,17 +322,16 @@ function initMusicWidget() {
     const distToTop = rect.top;
     const distToBottom = winH - rect.bottom;
 
-    // 寻找距离最近的边
     const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
 
     if (minDist === distToRight) {
-        panel.classList.add('panel-right'); // 吸附右边，向左弹出
+        panel.classList.add('panel-right'); 
     } else if (minDist === distToLeft) {
-        panel.classList.add('panel-left');  // 吸附左边，向右弹出
+        panel.classList.add('panel-left');  
     } else if (minDist === distToTop) {
-        panel.classList.add('panel-top');   // 吸附顶边，向下弹出
+        panel.classList.add('panel-top');   
     } else if (minDist === distToBottom) {
-        panel.classList.add('panel-bottom');// 吸附底边，向上弹出
+        panel.classList.add('panel-bottom');
     }
   }
 
@@ -318,7 +344,7 @@ function initMusicWidget() {
     const rect = widget.getBoundingClientRect();
     widgetStartX = rect.left;
     widgetStartY = rect.top;
-    widget.style.transition = 'none'; // 拖拽时取消动画
+    widget.style.transition = 'none'; 
   }
 
   function onDrag(e) {
@@ -329,14 +355,13 @@ function initMusicWidget() {
 
     if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
       hasMoved = true;
-      panel.classList.remove('expanded'); // 移动时强制关闭面板
+      panel.classList.remove('expanded'); 
     }
 
     if (hasMoved) {
       let newX = widgetStartX + dx;
       let newY = widgetStartY + dy;
       
-      // 边界限制
       newX = Math.max(10, Math.min(newX, window.innerWidth - 60));
       newY = Math.max(10, Math.min(newY, window.innerHeight - 60));
       
@@ -350,14 +375,12 @@ function initMusicWidget() {
     if (!isDragging) return;
     isDragging = false;
 
-    // 区分点击与拖拽
     if (!hasMoved) {
       panel.classList.toggle('expanded');
       if (panel.classList.contains('expanded')) updatePanelDirection();
       return;
     }
 
-    // 自动吸附逻辑 (寻找最近的四边之一)
     const rect = widget.getBoundingClientRect();
     const winW = window.innerWidth;
     const winH = window.innerHeight;
@@ -387,7 +410,6 @@ function initMusicWidget() {
     localStorage.setItem('musicPosY', targetY);
   }
 
-  // 事件绑定
   toggleBtn.addEventListener('mousedown', startDrag);
   window.addEventListener('mousemove', onDrag);
   window.addEventListener('mouseup', endDrag);
@@ -396,7 +418,6 @@ function initMusicWidget() {
   window.addEventListener('touchmove', onDrag, { passive: false });
   window.addEventListener('touchend', endDrag);
 
-  // --- 新增：播放状态监听，控制旋转类 ---
   if (bgm) {
     bgm.addEventListener('play', () => toggleBtn.classList.add('is-playing'));
     bgm.addEventListener('pause', () => toggleBtn.classList.remove('is-playing'));
@@ -439,7 +460,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadMarkdown('about.md');
   }
 
-  // 透明度滑块
   const opacitySlider = document.getElementById('ctrl-content-opacity');
   const opacityValueSpan = document.getElementById('val-content-opacity');
   if (opacitySlider && opacityValueSpan) {
@@ -468,22 +488,16 @@ const authorElement = document.getElementById('quote-author');
 const container = document.getElementById('quote-container');
 
 function updateQuote() {
-  // 先触发淡出效果
   container.classList.add('quote-fade');
 
   setTimeout(() => {
     const quote = quotes[currentQuoteIndex];
     quoteElement.innerText = `“${quote.text}”`;
     authorElement.innerText = `—— ${quote.author}`;
-    
-    // 切换到下一条
     currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
-    
-    // 移除淡出，触发淡入
     container.classList.remove('quote-fade');
-  }, 500); // 这里的 500ms 对应 CSS 中的 transition 时间
+  }, 500); 
 }
 
-// 初始化并开启每 10 秒循环
 updateQuote();
 setInterval(updateQuote, 30000);

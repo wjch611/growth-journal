@@ -123,7 +123,7 @@ function loadMarkdown(url, currentIndex = -1) {
           const targetUrl = link.getAttribute('href');
           const targetIndex = allEntries.findIndex(item => {
             const fname = item.filename || (item.date ? `${item.date}.md` : '');
-            return `/entries/${fname}` === targetUrl;
+            return `entries/${fname}` === targetUrl;
           });
           loadMarkdown(targetUrl, targetIndex);
         });
@@ -196,7 +196,7 @@ function renderDiaryList(page = 1) {
       const targetUrl = link.getAttribute('href');
       const targetIndex = allEntries.findIndex(item => {
         const fname = item.filename || (item.date ? `${item.date}.md` : '');
-        return `/entries/${fname}` === targetUrl;
+        return `entries/${fname}` === targetUrl;
       });
       loadMarkdown(targetUrl, targetIndex);
     });
@@ -429,14 +429,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (state.type === 'md' && state.url) {
       loadMarkdown(state.url, state.index ?? -1);
     } else {
-      loadMarkdown('/about.md');
+      loadMarkdown('about.md');
     }
   });
 
   if (location.hash === '#all') {
     loadAllEntries();
   } else {
-    loadMarkdown('/about.md');
+    loadMarkdown('about.md');
   }
 
   // 透明度滑块

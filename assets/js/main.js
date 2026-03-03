@@ -256,6 +256,7 @@ function loadAllEntries() {
 function initMusicWidget() {
   const toggleBtn = document.getElementById('music-toggle-btn');
   const panel = document.getElementById('music-panel');
+  const bgm = document.getElementById('bgm'); // 获取音频元素
   if (!toggleBtn || !panel) return;
 
   const widget = document.createElement('div');
@@ -394,6 +395,13 @@ function initMusicWidget() {
   toggleBtn.addEventListener('touchstart', startDrag, { passive: true });
   window.addEventListener('touchmove', onDrag, { passive: false });
   window.addEventListener('touchend', endDrag);
+
+  // --- 新增：播放状态监听，控制旋转类 ---
+  if (bgm) {
+    bgm.addEventListener('play', () => toggleBtn.classList.add('is-playing'));
+    bgm.addEventListener('pause', () => toggleBtn.classList.remove('is-playing'));
+    bgm.addEventListener('ended', () => toggleBtn.classList.remove('is-playing'));
+  }
 }
 
 // 初始化

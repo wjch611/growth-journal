@@ -209,6 +209,31 @@ body {
     display: none; 
 }
 
+
+/* 定义旋转动画 */
+@keyframes disk-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 播放时的状态 */
+#music-toggle-btn.is-playing {
+  /* 5秒转一圈，线性无限循环 */
+  animation: disk-rotate 5s linear infinite;
+  /* 确保边框和阴影在旋转时看起来很稳 */
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+/* 鼠标悬停时如果正在旋转，可以稍微放大一点，增加互动感 */
+#music-toggle-btn.is-playing:hover {
+  animation-play-state: paused; /* 悬停时暂停旋转，方便看清图片，可选 */
+}
+
 /* 面板方向微调 */
 #music-panel.panel-right  { right: 72px; top: 50%; transform: translateY(-50%) scale(1); }
 #music-panel.panel-left   { left: 72px;  top: 50%; transform: translateY(-50%) scale(1); }

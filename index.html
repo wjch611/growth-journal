@@ -154,15 +154,16 @@
   <script src="assets/js/music.js"></script>
   <script src="assets/js/main.js"></script>
 
-  <!-- 左侧导航切换脚本（仅此部分优化：动态弹出方向，避免覆盖/隐藏） -->
+  <!-- 左侧导航切换脚本（仅此部分优化：拖动彻底不触发展开 + 导航更小巧） -->
   <script>
     const sidebar = document.querySelector('.sidebar');
     const sidebarToggle = document.getElementById('sidebar-toggle-btn');
     if (sidebar && sidebarToggle) {
       let isDragging = false;
+      let hasDragged = false;   // 新增：记录是否真正拖动过
       let startX, startY, initialLeft, initialTop;
-      const sidebarGap = 12; // 球和栏目的间隔
-      const sidebarWidth = 195 + 32; // width + padding*2 approx
+      const sidebarGap = 12;
+      const sidebarWidth = 195 + 32;
 
       // 切换导航 + 隐藏/显示球 + 动态位置 + 智能弹出方向
       const toggleSidebar = () => {
@@ -176,44 +177,37 @@
 
         let showLeft, hideLeft;
         if (isLeftSide) {
-          // 球在左侧，从右侧弹出
           hideLeft = toggleRect.left - sidebarWidth - sidebarGap;
           showLeft = toggleRect.left + toggleRect.width + sidebarGap;
         } else {
-          // 球在右侧，从左侧弹出
           hideLeft = toggleRect.left + toggleRect.width + sidebarGap;
           showLeft = toggleRect.left - sidebarWidth - sidebarGap;
         }
 
         if (isShow) {
-          // 先设置隐藏位置（动画起点）
           sidebar.style.left = `${hideLeft}px`;
           sidebar.classList.add('show');
-          // 下一帧设置显示位置（动画终点）
           requestAnimationFrame(() => {
             sidebar.style.left = `${showLeft}px`;
           });
           sidebarToggle.style.opacity = '0';
           sidebarToggle.style.pointerEvents = 'none';
         } else {
-          // 先设置显示位置（动画起点）
           sidebar.style.left = `${showLeft}px`;
-          // 下一帧设置隐藏位置（动画终点）
           requestAnimationFrame(() => {
             sidebar.style.left = `${hideLeft}px`;
           });
-          // 动画结束后移除show类
           setTimeout(() => {
             sidebar.classList.remove('show');
             sidebarToggle.style.opacity = '1';
             sidebarToggle.style.pointerEvents = 'auto';
-          }, 450); // 匹配transition时长0.45s
+          }, 450);
         }
       };
 
-      // 点击打开/关闭
+      // 点击打开/关闭（只有真正点击才展开，拖动后不展开）
       sidebarToggle.addEventListener('click', (e) => {
-        if (!isDragging) {
+        if (!isDragging && !hasDragged) {
           e.stopPropagation();
           toggleSidebar();
         }
@@ -221,15 +215,15 @@
 
       // === 自由拖动逻辑（鼠标 + 触摸）===
       const startDrag = (clientX, clientY) => {
-        if (sidebar.classList.contains('show')) return; // 展开时不允许拖动
+        if (sidebar.classList.contains('show')) return;
         isDragging = true;
+        hasDragged = false;
         startX = clientX;
         startY = clientY;
         const rect = sidebarToggle.getBoundingClientRect();
         initialLeft = rect.left;
         initialTop = rect.top;
 
-        // 切换为绝对像素定位（移除初始 translateY）
         sidebarToggle.style.transition = 'none';
         sidebarToggle.style.transform = 'none';
         sidebarToggle.style.left = `${initialLeft}px`;
@@ -241,10 +235,13 @@
         if (!isDragging) return;
         const dx = clientX - startX;
         const dy = clientY - startY;
+
+        // 只要移动超过6px就标记为真正拖动（防止误触）
+        if (Math.hypot(dx, dy) > 6) hasDragged = true;
+
         let newLeft = initialLeft + dx;
         let newTop = initialTop + dy;
 
-        // 软限制在视口内（防止完全拖出屏幕，体验更好，但不吸附边缘）
         newLeft = Math.max(10, Math.min(window.innerWidth - 72, newLeft));
         newTop = Math.max(10, Math.min(window.innerHeight - 72, newTop));
 
@@ -257,6 +254,7 @@
         isDragging = false;
         sidebarToggle.style.transition = 'all 0.3s ease';
         sidebarToggle.classList.remove('dragging');
+        // hasDragged 在下一次 startDrag 时重置
       };
 
       // 鼠标拖动
@@ -264,7 +262,7 @@
       document.addEventListener('mousemove', (e) => { doDrag(e.clientX, e.clientY); });
       document.addEventListener('mouseup', stopDrag);
 
-      // 触摸拖动（移动端支持）
+      // 触摸拖动
       sidebarToggle.addEventListener('touchstart', (e) => {
         const touch = e.touches[0];
         startDrag(touch.clientX, touch.clientY);

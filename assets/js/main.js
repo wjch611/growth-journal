@@ -476,15 +476,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 const quotes = [
-  { text: "我们都是星星的孩子。", author: "我" },
-  { text: "我们来自星辰，也将奔赴星辰。", author: "我" },
-  { text: "我们都在阴沟里，但仍有人仰望星空。", author: "王尔德" },
-  { text: "每一个不曾起舞的日子，都是对生命的辜负。", author: "尼采" }
+  { text: "我们都是星星的孩子。"},
+  { text: "我们来自星辰，也将奔赴星辰。"},
+  { text: "我们都在阴沟里，但仍有人仰望星空。"},
+  { text: "每一个不曾起舞的日子，都是对生命的辜负。"}
 ];
 
 let currentQuoteIndex = 0;
 const quoteElement = document.getElementById('quote-content');
-const authorElement = document.getElementById('quote-author');
 const container = document.getElementById('quote-container');
 
 function updateQuote() {
@@ -493,7 +492,6 @@ function updateQuote() {
   setTimeout(() => {
     const quote = quotes[currentQuoteIndex];
     quoteElement.innerText = `“${quote.text}”`;
-    authorElement.innerText = `—— ${quote.author}`;
     currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
     container.classList.remove('quote-fade');
   }, 500); 

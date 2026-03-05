@@ -1,23 +1,19 @@
-// main.js - 修复版：自动适配 GitHub Pages 二级目录与本地环境
+// main.js - 精简版：移除音乐控件，只保留核心功能 + 自动适配 GitHub Pages
 const contentEl = document.getElementById('content');
 
 // ========== 路径修复逻辑：自动识别 GitHub 仓库名 ==========
 const getBasePath = () => {
-  // 如果是在 GitHub Pages 访问 (路径中包含仓库名)
   if (window.location.hostname.includes('github.io')) {
     return '/growth-journal/'; 
   }
-  // 本地开发通常直接在根目录
   return '/';
 };
 
 const BASE_PATH = getBasePath();
 
-// 辅助函数：确保路径拼接正确，不重复斜杠且包含 BASE_PATH
 const fixUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('http') || url.startsWith('blob')) return url;
-  // 去掉 url 开头的斜杠
   const cleanUrl = url.replace(/^\//, '');
   return BASE_PATH + cleanUrl;
 };
@@ -111,7 +107,6 @@ function showError(message, detail = '') {
 
 function loadMarkdown(url, currentIndex = -1) {
   showLoading();
-  // 修复路径
   const fetchUrl = fixUrl(url);
 
   fetch(fetchUrl)
@@ -140,10 +135,7 @@ function loadMarkdown(url, currentIndex = -1) {
       const h1 = contentEl.querySelector('h1');
       document.title = h1 ? h1.textContent.trim() + ' | 我的成长日记' : '我的成长日记';
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-      
-      // 注意：pushState 的路径也需要修复
       history.pushState({ type: 'md', url: fetchUrl, index: currentIndex }, '', fetchUrl);
-      
       contentEl.querySelectorAll('[data-entry-link]').forEach(link => {
         link.addEventListener('click', e => {
           e.preventDefault();
@@ -248,7 +240,6 @@ function loadAllEntries() {
       return;
     }
 
-    // 使用 fixUrl 修复 index.json 的请求路径
     const fetchUrl = fixUrl(possibleUrls[attempt]);
 
     fetch(fetchUrl)
@@ -282,153 +273,9 @@ function loadAllEntries() {
   tryNext();
 }
 
-// ==================== 音乐控件修复版：支持点击 + 四边吸附 + 智能方向 ====================
-function initMusicWidget() {
-  const toggleBtn = document.getElementById('music-toggle-btn');
-  const panel = document.getElementById('music-panel');
-  const bgm = document.getElementById('bgm'); 
-  if (!toggleBtn || !panel) return;
-
-  const widget = document.createElement('div');
-  widget.id = 'music-widget';
-  toggleBtn.parentNode.insertBefore(widget, toggleBtn);
-  widget.appendChild(toggleBtn);
-  widget.appendChild(panel);
-
-  let isDragging = false;
-  let hasMoved = false;
-  let startX, startY, widgetStartX, widgetStartY;
-
-  const savedX = localStorage.getItem('musicPosX');
-  const savedY = localStorage.getItem('musicPosY');
-  if (savedX !== null && savedY !== null) {
-    widget.style.left = savedX + 'px';
-    widget.style.top = savedY + 'px';
-    widget.style.right = 'auto';
-  } else {
-    widget.style.right = '20px';
-    widget.style.top = '45%';
-  }
-
-  function updatePanelDirection() {
-    const rect = widget.getBoundingClientRect();
-    const winW = window.innerWidth;
-    const winH = window.innerHeight;
-
-    panel.classList.remove('panel-left', 'panel-right', 'panel-top', 'panel-bottom');
-
-    const distToLeft = rect.left;
-    const distToRight = winW - rect.right;
-    const distToTop = rect.top;
-    const distToBottom = winH - rect.bottom;
-
-    const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
-
-    if (minDist === distToRight) {
-        panel.classList.add('panel-right'); 
-    } else if (minDist === distToLeft) {
-        panel.classList.add('panel-left');  
-    } else if (minDist === distToTop) {
-        panel.classList.add('panel-top');   
-    } else if (minDist === distToBottom) {
-        panel.classList.add('panel-bottom');
-    }
-  }
-
-  function startDrag(e) {
-    isDragging = true;
-    hasMoved = false;
-    const evt = e.type.includes('touch') ? e.touches[0] : e;
-    startX = evt.clientX;
-    startY = evt.clientY;
-    const rect = widget.getBoundingClientRect();
-    widgetStartX = rect.left;
-    widgetStartY = rect.top;
-    widget.style.transition = 'none'; 
-  }
-
-  function onDrag(e) {
-    if (!isDragging) return;
-    const evt = e.type.includes('touch') ? e.touches[0] : e;
-    const dx = evt.clientX - startX;
-    const dy = evt.clientY - startY;
-
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-      hasMoved = true;
-      panel.classList.remove('expanded'); 
-    }
-
-    if (hasMoved) {
-      let newX = widgetStartX + dx;
-      let newY = widgetStartY + dy;
-      
-      newX = Math.max(10, Math.min(newX, window.innerWidth - 60));
-      newY = Math.max(10, Math.min(newY, window.innerHeight - 60));
-      
-      widget.style.left = newX + 'px';
-      widget.style.top = newY + 'px';
-      widget.style.right = 'auto';
-    }
-  }
-
-  function endDrag() {
-    if (!isDragging) return;
-    isDragging = false;
-
-    if (!hasMoved) {
-      panel.classList.toggle('expanded');
-      if (panel.classList.contains('expanded')) updatePanelDirection();
-      return;
-    }
-
-    const rect = widget.getBoundingClientRect();
-    const winW = window.innerWidth;
-    const winH = window.innerHeight;
-    
-    const dists = [
-      { side: 'left', val: rect.left },
-      { side: 'right', val: winW - rect.right },
-      { side: 'top', val: rect.top },
-      { side: 'bottom', val: winH - rect.bottom }
-    ];
-
-    const closest = dists.reduce((prev, curr) => prev.val < curr.val ? prev : curr);
-    
-    let targetX = rect.left;
-    let targetY = rect.top;
-
-    if (closest.side === 'left') targetX = 16;
-    else if (closest.side === 'right') targetX = winW - rect.width - 16;
-    else if (closest.side === 'top') targetY = 16;
-    else if (closest.side === 'bottom') targetY = winH - rect.height - 16;
-
-    widget.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-    widget.style.left = targetX + 'px';
-    widget.style.top = targetY + 'px';
-
-    localStorage.setItem('musicPosX', targetX);
-    localStorage.setItem('musicPosY', targetY);
-  }
-
-  toggleBtn.addEventListener('mousedown', startDrag);
-  window.addEventListener('mousemove', onDrag);
-  window.addEventListener('mouseup', endDrag);
-
-  toggleBtn.addEventListener('touchstart', startDrag, { passive: true });
-  window.addEventListener('touchmove', onDrag, { passive: false });
-  window.addEventListener('touchend', endDrag);
-
-  if (bgm) {
-    bgm.addEventListener('play', () => toggleBtn.classList.add('is-playing'));
-    bgm.addEventListener('pause', () => toggleBtn.classList.remove('is-playing'));
-    bgm.addEventListener('ended', () => toggleBtn.classList.remove('is-playing'));
-  }
-}
-
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   initSearchBox();
-  initMusicWidget();
 
   document.getElementById('all-diaries-link')?.addEventListener('click', e => {
     e.preventDefault();
@@ -472,30 +319,29 @@ document.addEventListener('DOMContentLoaded', () => {
     updateOpacity(opacitySlider.value);
     opacitySlider.addEventListener('input', (e) => updateOpacity(e.target.value));
   }
+
+  // 引用轮播
+  const quotes = [
+    { text: "我们都是星星的孩子。"},
+    { text: "我们来自星辰，也将奔赴星辰。"},
+    { text: "我们都在阴沟里，但仍有人仰望星空。"},
+    { text: "每一个不曾起舞的日子，都是对生命的辜负。"}
+  ];
+
+  let currentQuoteIndex = 0;
+  const quoteElement = document.getElementById('quote-content');
+  const container = document.getElementById('quote-container');
+
+  function updateQuote() {
+    container.classList.add('quote-fade');
+    setTimeout(() => {
+      const quote = quotes[currentQuoteIndex];
+      quoteElement.innerText = `“${quote.text}”`;
+      currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
+      container.classList.remove('quote-fade');
+    }, 500); 
+  }
+
+  updateQuote();
+  setInterval(updateQuote, 30000);
 });
-
-
-const quotes = [
-  { text: "我们都是星星的孩子。"},
-  { text: "我们来自星辰，也将奔赴星辰。"},
-  { text: "我们都在阴沟里，但仍有人仰望星空。"},
-  { text: "每一个不曾起舞的日子，都是对生命的辜负。"}
-];
-
-let currentQuoteIndex = 0;
-const quoteElement = document.getElementById('quote-content');
-const container = document.getElementById('quote-container');
-
-function updateQuote() {
-  container.classList.add('quote-fade');
-
-  setTimeout(() => {
-    const quote = quotes[currentQuoteIndex];
-    quoteElement.innerText = `“${quote.text}”`;
-    currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
-    container.classList.remove('quote-fade');
-  }, 500); 
-}
-
-updateQuote();
-setInterval(updateQuote, 30000);

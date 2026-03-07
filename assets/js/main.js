@@ -230,7 +230,7 @@ function loadMarkdown(url, currentIndex = -1) {
           const nextFilename = next.filename || (next.date ? `${next.date}.md` : null);
           if (nextFilename) finalHtml += `<a href="entries/${nextFilename}" class="nav-link next" data-entry-link style="margin:0 1.5rem; color:#a78bfa; text-decoration:none;">下一篇 →</a>`;
         }
-        finalHtml += `<button id="exit-article-btn" style="margin-left:2rem; padding:0.3rem 0.8rem; font-size:1rem; border:none; border-radius:4px; background:#a78bfa; color:#fff; cursor:pointer;">退出</button>`;
+        finalHtml += `<button id="exit-article-btn" style="margin-left:2rem; padding:0.3rem 0.8rem; font-size:1rem; border:none; border-radius:4px; background:#a78bfa; color:#fff; cursor:pointer;">返回</button>`;
         finalHtml += '</div>';
       }
 
@@ -647,5 +647,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   updateQuote();
-  setInterval(updateQuote, 30000);
+  setInterval(updateQuote, 10000);
 });

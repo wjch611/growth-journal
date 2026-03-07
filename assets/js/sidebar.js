@@ -186,6 +186,9 @@ if (sidebar && sidebarToggle) {
 
           isMergedWithMusic = true;
 
+          // 增加：吸附成功时添加 star-mode（触发 CSS 星星效果）
+          sidebarToggle.classList.add('star-mode');
+
           localStorage.setItem('sidebarPosX', targetLeft);
           localStorage.setItem('sidebarPosY', targetTop);
         }
@@ -285,6 +288,9 @@ if (sidebar && sidebarToggle) {
           }
 
           isMergedWithMusic = false;
+
+          // 增加：解除吸附时移除 star-mode（恢复黑洞效果）
+          sidebarToggle.classList.remove('star-mode');
         }
       }
     }

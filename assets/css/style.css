@@ -679,3 +679,322 @@ body {
   font-size: 1.2rem;
   margin: 4rem 0;
 }
+
+/* ===============================
+   导航球：黑洞形态
+   =============================== */
+
+#sidebar-toggle-btn {
+
+  position: fixed;
+  left: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10000;
+
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+
+  cursor: grab;
+  user-select: none;
+
+  border: 1px solid rgba(167,139,250,0.35);
+
+  /* 黑洞主体 */
+  background:
+  radial-gradient(circle at center,
+    #000000 0px,
+    #000000 6px,       /* 中央奇点（小黑点） */
+    #020012 18px,
+    #0b0030 26px,
+    rgba(120,80,255,0.45) 36px,
+    rgba(120,80,255,0.18) 45px,
+    transparent 52px
+  );
+
+  box-shadow:
+  inset 0 0 25px #000,
+  0 0 18px rgba(120,80,255,0.45);
+
+  overflow: hidden;
+
+  transition:
+  transform .3s ease,
+  box-shadow .3s ease;
+}
+
+
+/* 黑洞吸积盘旋转 */
+
+#sidebar-toggle-btn::before{
+
+  content:"";
+  position:absolute;
+  inset:-40%;
+
+  background:
+  conic-gradient(
+    rgba(120,80,255,0.6),
+    transparent,
+    rgba(120,80,255,0.4),
+    transparent
+  );
+
+  filter: blur(12px);
+
+  animation: blackhole-spin 8s linear infinite;
+}
+
+@keyframes blackhole-spin{
+
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+
+}
+
+
+/* ===============================
+   吸附后：白色恒星
+   =============================== */
+
+#sidebar-toggle-btn.star-mode{
+
+  background:
+  radial-gradient(circle,
+    #ffffff 0%,
+    #ffffff 8%,
+    #f5f7ff 18%,
+    rgba(255,255,255,0.9) 28%,
+    rgba(255,255,255,0.6) 45%,
+    rgba(255,255,255,0.3) 60%,
+    rgba(255,255,255,0.08) 75%,
+    transparent 80%
+  );
+
+  border: none;
+
+  box-shadow:
+  0 0 25px rgba(255,255,255,0.95),
+  0 0 60px rgba(255,255,255,0.8),
+  0 0 120px rgba(255,255,255,0.6),
+  0 0 200px rgba(255,255,255,0.4);
+
+  animation: star-pulse 3s ease-in-out infinite;
+}
+
+
+/* 恒星呼吸光 */
+
+@keyframes star-pulse{
+
+  0%{
+    box-shadow:
+    0 0 25px rgba(255,255,255,0.9),
+    0 0 60px rgba(255,255,255,0.7),
+    0 0 120px rgba(255,255,255,0.5);
+  }
+
+  50%{
+    box-shadow:
+    0 0 40px rgba(255,255,255,1),
+    0 0 100px rgba(255,255,255,0.9),
+    0 0 180px rgba(255,255,255,0.7);
+  }
+
+  100%{
+    box-shadow:
+    0 0 25px rgba(255,255,255,0.9),
+    0 0 60px rgba(255,255,255,0.7),
+    0 0 120px rgba(255,255,255,0.5);
+  }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* ====== 覆盖：确保导航球没有三条杆，只显示中心点/黑洞 ====== */
+
+/* 隐藏按钮内部任何图标或图片（如果 HTML 内有 <svg> / <img> / .bars 等） */
+#sidebar-toggle-btn > svg,
+#sidebar-toggle-btn > img,
+#sidebar-toggle-btn i,
+#sidebar-toggle-btn .icon,
+#sidebar-toggle-btn .bars,
+#sidebar-toggle-btn .hamburger {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 彻底移除任何背景图像（以免 head.jpg 等覆盖视觉） */
+#sidebar-toggle-btn {
+  background-image: none !important;
+}
+
+/* 导航球：黑洞（主样式） */
+#sidebar-toggle-btn {
+  position: fixed;
+  left: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10000;
+
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+
+  cursor: grab;
+  user-select: none;
+
+  border: 1px solid rgba(167,139,250,0.14);
+
+  /* 黑洞主体：中心小黑点 + 吸积盘过渡 */
+  background:
+    radial-gradient(circle at center,
+      rgba(0,0,0,1) 0px,
+      rgba(0,0,0,1) 6px,
+      #050018 18px,
+      #0b0030 28px,
+      rgba(120,80,255,0.36) 38px,
+      rgba(120,80,255,0.12) 46px,
+      transparent 52px
+    );
+
+  box-shadow:
+    inset 0 0 26px rgba(0,0,0,0.95),
+    0 0 18px rgba(120,80,255,0.3);
+
+  overflow: visible;
+  transition: transform .28s ease, box-shadow .28s ease, background .28s ease;
+}
+
+/* 吸积盘视觉：conic / 模糊旋转（使用 ::before） */
+#sidebar-toggle-btn::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 220%;
+  height: 220%;
+  transform: translate(-50%, -50%) rotate(0deg);
+  border-radius: 50%;
+  background:
+    conic-gradient(
+      rgba(120,80,255,0.55),
+      rgba(120,80,255,0.18),
+      transparent 30%,
+      rgba(100,60,220,0.28),
+      transparent 60%
+    );
+  filter: blur(10px);
+  opacity: 0.95;
+  z-index: 1;
+  pointer-events: none;
+  animation: blackhole-spin 8s linear infinite;
+}
+
+/* 中央奇点（用 ::after 绘制一个点） */
+#sidebar-toggle-btn::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #000;            /* 黑洞奇点：黑色点 */
+  box-shadow: 0 0 6px rgba(0,0,0,0.8) inset;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* 黑洞旋转动画 */
+@keyframes blackhole-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 悬停微放大 */
+#sidebar-toggle-btn:hover {
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 0 28px rgba(140,100,255,0.5), inset 0 0 30px rgba(0,0,0,0.95);
+}
+
+/* 拖动态样式保留（不改逻辑） */
+#sidebar-toggle-btn.dragging { transition: none !important; transform: none !important; }
+
+/* ====== 吸附后：白色恒星（star-mode） ====== */
+/* star-mode 覆盖黑洞样式，使其变为白色恒星并强烈发光 */
+#sidebar-toggle-btn.star-mode {
+  background: radial-gradient(circle at center,
+    #ffffff 0%,
+    #fffefc 10%,
+    #fff6d6 22%,
+    rgba(255,255,255,0.95) 36%,
+    rgba(255,255,255,0.7) 52%,
+    rgba(255,255,255,0.18) 72%,
+    transparent 78%
+  ) !important;
+
+  border: none;
+  box-shadow:
+    0 0 30px rgba(255,255,255,0.95),
+    0 0 80px rgba(255,240,200,0.85),
+    0 0 160px rgba(255,210,140,0.5);
+  transform: translateY(-50%) scale(1.06);
+}
+
+/* 当变成恒星时：吸积盘变成耀斑光（覆盖 ::before） */
+#sidebar-toggle-btn.star-mode::before {
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(255,255,255,0.95) 0deg,
+      rgba(255,255,255,0.95) 2deg,
+      rgba(255,255,255,0.18) 2deg,
+      rgba(255,255,255,0.18) 8deg
+    );
+  filter: blur(6px);
+  animation: star-spin 10s linear infinite;
+  opacity: 0.95;
+}
+
+/* 恒星中心由黑变白，并放大发光 */
+#sidebar-toggle-btn.star-mode::after {
+  background: #ffffff;
+  width: 12px;
+  height: 12px;
+  box-shadow:
+    0 0 12px rgba(255,255,255,0.9),
+    0 0 40px rgba(255,240,200,0.85),
+    0 0 90px rgba(255,210,140,0.5);
+  z-index: 5;
+}
+
+/* 恒星旋转（子动画） */
+@keyframes star-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 小调整：当处于 star-mode 时，确保无内部图片/ svg 显示 */
+#sidebar-toggle-btn.star-mode > img,
+#sidebar-toggle-btn.star-mode > svg,
+#sidebar-toggle-btn.star-mode .icon { display: none !important; visibility: hidden !important; }
+
+/* 可选（如果存在按钮内部文本/字符，隐藏它） */
+#sidebar-toggle-btn { color: transparent !important; font-size: 0 !important; line-height: 0 !important; }

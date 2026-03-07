@@ -1,4 +1,4 @@
-// main.js - 精简版：保留核心功能 + 自动代码高亮 + 代码透明度同步 + 复制按钮 + 图片自适应 + 自动适配 GitHub Pages + 长代码折叠及遮罩 + 平滑圆角
+// main.js - 精简版：保留核心功能 + 自动代码高亮 + 代码透明度同步 + 复制按钮 + 图片自适应 + 自动适配 GitHub Pages + 长代码折叠及遮罩 + 平滑圆角 + 图片路径鲁棒解析 + 滚动条透明
 const contentEl = document.getElementById('content');
 
 // ========== 路径修复逻辑：自动识别 GitHub 仓库名 ==========
@@ -14,36 +14,64 @@ const fixUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('http') || url.startsWith('blob') || url.startsWith('data:')) return url;
   const cleanUrl = url.replace(/^\//, '');
-  // 避免出现 '//' 问题
   return (BASE_PATH.endsWith('/') ? BASE_PATH : BASE_PATH) + cleanUrl;
 };
 
-// 配置
-const ITEMS_PER_PAGE = 3;
-let currentPage = 1;
-let currentSearchKeyword = '';
-let allEntries = [];
-let currentOpacity = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--content-bg-opacity')) || 1;
-
-// 搜索框变量
-let searchContainer = null;
-let searchInput = null;
-let searchToggleBtn = null;
-
-// ========== 自动加载 highlight.js ==========
-(function loadHighlightJS() {
-  if (!window.hljs) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css';
-    document.head.appendChild(link);
-
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js';
-    script.onload = () => { /* hljs 可用 */ };
-    document.head.appendChild(script);
-  }
+// ========== 注入滚动条透明样式（WebKit + Firefox） ==========
+(function injectScrollbarStyle() {
+  const style = document.createElement('style');
+  style.id = 'code-scrollbar-style';
+  style.innerHTML = `
+/* 代码块内部滚动条 - WebKit */
+.code-wrapper pre::-webkit-scrollbar { width: 10px; height: 8px; background: transparent; }
+.code-wrapper pre::-webkit-scrollbar-track { background: transparent; }
+.code-wrapper pre::-webkit-scrollbar-thumb { background: rgba(0,0,0,0); border-radius: 8px; }
+/* Firefox */
+.code-wrapper pre { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0) rgba(0,0,0,0); }
+/* 若需要更显眼，可调整 rgba(0,0,0,0.12) 之类的值 */
+`;
+  document.head.appendChild(style);
 })();
+
+// ========== 归一化路径函数：支持 ../ ./ / absolute 和在 file:// 下的回退 ==========
+function normalizePath(basePath, relativePath) {
+  // basePath: already an absolute-ish path beginning with '/' or '' (may include BASE_PATH)
+  // relativePath: raw src from markdown
+  try {
+    // 使用 URL 能正确处理 ../ 和 ./ 等
+    // 需要一个完整 base URL（含 origin）供 URL API 使用
+    const origin = window.location.origin && window.location.origin !== 'null'
+      ? window.location.origin
+      : (window.location.protocol === 'file:' ? 'file:///' + (window.location.pathname || '') : window.location.origin);
+
+    // 确保 baseCandidate 以 / 结尾（表示目录）
+    let baseCandidate = basePath;
+    if (!baseCandidate.startsWith('/')) baseCandidate = '/' + baseCandidate;
+    if (!baseCandidate.endsWith('/')) baseCandidate = baseCandidate + '/';
+
+    const baseForUrl = origin + baseCandidate;
+    const u = new URL(relativePath, baseForUrl);
+    // 返回规范化的 pathname（包含 BASE_PATH，如果 basePath 中含有 BASE_PATH 就在里面）
+    // 若 origin 是 file:/// 则 u.pathname 为本地绝对路径形式，保留其 pathname
+    return u.pathname + (u.search || '') + (u.hash || '');
+  } catch (e) {
+    // 回退到手动解析（处理 ../ ./ 等）
+    const baseParts = (basePath || '').split('/').filter(Boolean);
+    const relParts = (relativePath || '').split('/');
+    const stack = baseParts.slice();
+    // 如果 basePath 指向文件（没有尾斜杠），我们假定 basePath 是目录（上层调用传入时请保证）
+    relParts.forEach(part => {
+      if (part === '..') {
+        if (stack.length) stack.pop();
+      } else if (part === '.') {
+        // skip
+      } else if (part) {
+        stack.push(part);
+      }
+    });
+    return '/' + stack.join('/');
+  }
+}
 
 // ========== 复制函数（兼容回退） ==========
 function copyText(text) {
@@ -69,6 +97,33 @@ function copyText(text) {
     }
   });
 }
+
+// ========== 其余原有配置 ==========
+const ITEMS_PER_PAGE = 3;
+let currentPage = 1;
+let currentSearchKeyword = '';
+let allEntries = [];
+let currentOpacity = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--content-bg-opacity')) || 1;
+
+// 搜索框变量
+let searchContainer = null;
+let searchInput = null;
+let searchToggleBtn = null;
+
+// ========== 自动加载 highlight.js ==========
+(function loadHighlightJS() {
+  if (!window.hljs) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js';
+    script.onload = () => { /* hljs 自动可用 */ };
+    document.head.appendChild(script);
+  }
+})();
 
 // ========== 搜索框初始化 ==========
 function initSearchBox() {
@@ -188,9 +243,9 @@ function loadMarkdown(url, currentIndex = -1) {
           const p = fetchUrl.split('?')[0].split('#')[0];
           if (p.endsWith('/')) return p;
           const idx = p.lastIndexOf('/');
-          return idx !== -1 ? p.slice(0, idx + 1) : '';
+          return idx !== -1 ? p.slice(0, idx + 1) : '/';
         } catch (e) {
-          return '';
+          return '/';
         }
       })();
 
@@ -204,8 +259,10 @@ function loadMarkdown(url, currentIndex = -1) {
             // 根路径：在 GitHub Pages 下需要 BASE_PATH 前缀
             resolved = (BASE_PATH + rawSrc.replace(/^\//, '')).replace(/\/\/+/g, '/');
           } else {
-            // 相对路径：基于当前 markdown 文件目录（mdBase）
-            resolved = (mdBase + rawSrc).replace(/\/\/+/g, '/');
+            // 相对路径：基于当前 markdown 文件目录（mdBase），并规范化 ../ 等
+            resolved = normalizePath(mdBase, rawSrc);
+            // normalizePath 返回 pathname（例如 /growth-journal/assets/img/1.jpg）或本地 file 路径，确保去重重复斜杠
+            resolved = resolved.replace(/\/\/+/g, '/');
           }
         }
 
@@ -286,7 +343,6 @@ function loadMarkdown(url, currentIndex = -1) {
 
         // 长代码折叠与遮罩
         const MAX_HEIGHT = 400; // px，可调
-        // 创建遮罩（pointer-events: none，使滚动/选中穿透）
         const mask = document.createElement('div');
         mask.className = 'code-mask';
         mask.style.position = 'absolute';
@@ -295,10 +351,10 @@ function loadMarkdown(url, currentIndex = -1) {
         mask.style.width = '100%';
         mask.style.height = '88px';
         mask.style.background = `linear-gradient(to bottom, transparent, rgba(30, 30, 47, ${currentOpacity}))`;
-        mask.style.pointerEvents = 'none';
+        mask.style.pointerEvents = 'none'; // 让滚动/选中穿透
         mask.style.transition = 'opacity 0.2s ease';
         mask.style.zIndex = '8';
-        // 折叠按钮（与复制按钮并列）
+
         const toggleBtn = document.createElement('button');
         toggleBtn.innerText = '展开';
         toggleBtn.type = 'button';
@@ -317,19 +373,15 @@ function loadMarkdown(url, currentIndex = -1) {
 
         // 等待一帧以便正确测量高度
         requestAnimationFrame(() => {
-          // 如果 pre 的 scrollHeight 超过阈值，启用折叠 UI
           if (pre.scrollHeight > MAX_HEIGHT + 6) {
-            // 折叠（保留垂直滚动以支持滑动查看）
             pre.style.maxHeight = `${MAX_HEIGHT}px`;
-            pre.style.overflowY = 'auto'; // 关键：折叠时仍然允许垂直滚动查看
+            pre.style.overflowY = 'auto'; // 关键：折叠时仍允许垂直滚动查看
             pre.style.webkitOverflowScrolling = 'touch';
-            // 显示遮罩与按钮
             wrapper.appendChild(mask);
             toggleBtn.style.display = 'inline-block';
             toggleBtn.innerText = '展开';
             wrapper.appendChild(toggleBtn);
           } else {
-            // 不需要折叠时，让 pre 显示全部
             pre.style.maxHeight = 'none';
             pre.style.overflowY = 'auto';
             mask.style.opacity = '0';
@@ -337,28 +389,24 @@ function loadMarkdown(url, currentIndex = -1) {
           }
         });
 
-        // 折叠/展开逻辑（始终保留垂直滚动；展开时移除 maxHeight 限制）
+        // 折叠/展开逻辑（保留垂直滚动）
         let isExpanded = false;
         toggleBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           isExpanded = !isExpanded;
           if (isExpanded) {
-            pre.style.maxHeight = `${pre.scrollHeight + 60}px`; // 给足高度
+            pre.style.maxHeight = `${pre.scrollHeight + 60}px`;
             pre.style.overflowY = 'auto';
             mask.style.opacity = '0';
             toggleBtn.innerText = '折叠';
-            // 小延迟后移除 maxHeight，让内容自然撑开（保留一段时间的 maxHeight 防抖）
             setTimeout(() => {
-              if (isExpanded) {
-                pre.style.maxHeight = 'none';
-              }
+              if (isExpanded) pre.style.maxHeight = 'none';
             }, 260);
           } else {
             pre.style.maxHeight = `${MAX_HEIGHT}px`;
             pre.style.overflowY = 'auto';
             mask.style.opacity = '1';
             toggleBtn.innerText = '展开';
-            // 折叠时将 wrapper 滚动到视口（便于用户看到顶部）
             wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         });
@@ -595,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
       quoteElement.innerText = `“${quote.text}”`;
       currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
       container.classList.remove('quote-fade');
-    }, 500); 
+    }, 500);
   }
 
   updateQuote();

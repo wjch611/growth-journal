@@ -4,7 +4,7 @@ const contentEl = document.getElementById('content');
 // ========== 路径修复逻辑：自动识别 GitHub 仓库名 ==========
 const getBasePath = () => {
   if (window.location.hostname.includes('github.io')) {
-    return '/growth-journal/'; 
+    return '/growth-journal/';
   }
   return '/';
 };
@@ -12,9 +12,10 @@ const BASE_PATH = getBasePath();
 
 const fixUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http') || url.startsWith('blob')) return url;
+  if (url.startsWith('http') || url.startsWith('blob') || url.startsWith('data:')) return url;
   const cleanUrl = url.replace(/^\//, '');
-  return BASE_PATH + cleanUrl;
+  // 避免出现 '//' 问题
+  return (BASE_PATH.endsWith('/') ? BASE_PATH : BASE_PATH) + cleanUrl;
 };
 
 // 配置
@@ -39,10 +40,35 @@ let searchToggleBtn = null;
 
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js';
-    script.onload = () => { /* hljs 自动可用 */ };
+    script.onload = () => { /* hljs 可用 */ };
     document.head.appendChild(script);
   }
 })();
+
+// ========== 复制函数（兼容回退） ==========
+function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+  return new Promise((resolve, reject) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) resolve();
+      else reject(new Error('execCommand copy failed'));
+    } catch (e) {
+      document.body.removeChild(ta);
+      reject(e);
+    }
+  });
+}
 
 // ========== 搜索框初始化 ==========
 function initSearchBox() {
@@ -133,6 +159,7 @@ function loadMarkdown(url, currentIndex = -1) {
     .then(md => {
       const html = marked.parse(md);
 
+      // 将解析后的 HTML 包装（不直接修改原 html 字符串中的 src）
       let finalHtml = `<div class="markdown-content">${html}</div>`;
 
       // 导航逻辑
@@ -154,40 +181,69 @@ function loadMarkdown(url, currentIndex = -1) {
 
       contentEl.innerHTML = finalHtml;
 
-      // 图片自适应与圆滑处理
+      // === 图片自适应与路径处理 ===
+      // 计算 markdown 基础目录（fetchUrl 已经是带 BASE_PATH 的相对路径）
+      const mdBase = (() => {
+        try {
+          const p = fetchUrl.split('?')[0].split('#')[0];
+          if (p.endsWith('/')) return p;
+          const idx = p.lastIndexOf('/');
+          return idx !== -1 ? p.slice(0, idx + 1) : '';
+        } catch (e) {
+          return '';
+        }
+      })();
+
       contentEl.querySelectorAll('.markdown-content img').forEach(img => {
+        const rawSrc = img.getAttribute('src') || '';
+        let resolved = rawSrc;
+
+        // 若是绝对 http/data/blob，则保持
+        if (!/^(\w+:)?\/\//.test(rawSrc) && !rawSrc.startsWith('data:') && !rawSrc.startsWith('blob:')) {
+          if (rawSrc.startsWith('/')) {
+            // 根路径：在 GitHub Pages 下需要 BASE_PATH 前缀
+            resolved = (BASE_PATH + rawSrc.replace(/^\//, '')).replace(/\/\/+/g, '/');
+          } else {
+            // 相对路径：基于当前 markdown 文件目录（mdBase）
+            resolved = (mdBase + rawSrc).replace(/\/\/+/g, '/');
+          }
+        }
+
+        // 最终设置 src（保留浏览器默认解析，以便本地 file:// 或 dev server 也能工作）
+        img.src = resolved;
         img.style.maxWidth = '100%';
         img.style.height = 'auto';
         img.style.display = 'block';
         img.style.margin = '1.5rem auto';
-        img.style.borderRadius = '10px'; // 图片圆角
-        img.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'; // 轻微阴影增强质感
+        img.style.borderRadius = '10px';
+        img.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
       });
 
-      // 代码块优化：创建 Wrapper 包裹层，解决横向滚动时按钮飘走的问题
+      // 代码块处理（创建 wrapper，复制按钮，折叠/遮罩）
       contentEl.querySelectorAll('.markdown-content pre > code').forEach(code => {
         const pre = code.parentElement;
 
-        // 1. 创建 Wrapper 包裹层
+        // 创建 wrapper 包裹层
         const wrapper = document.createElement('div');
         wrapper.className = 'code-wrapper';
         wrapper.style.position = 'relative';
         wrapper.style.margin = '1.5rem 0';
-        wrapper.style.borderRadius = '10px'; // 代码块圆角
-        wrapper.style.overflow = 'hidden';   // 裁剪内部内容，使圆角生效
+        wrapper.style.borderRadius = '10px';
+        wrapper.style.overflow = 'hidden';
         wrapper.style.backgroundColor = `rgba(30, 30, 47, ${currentOpacity})`;
-        wrapper.style.transition = 'background-color 0.3s ease';
+        wrapper.style.transition = 'background-color 0.18s ease';
 
-        // 将 wrapper 插入 DOM，并把原本的 pre 放进去
         pre.parentNode.insertBefore(wrapper, pre);
         wrapper.appendChild(pre);
 
-        // 2. 调整 pre 样式（交由 wrapper 负责背景和圆角）
+        // pre 样式微调（背景由 wrapper 提供）
         pre.style.overflowX = 'auto';
         pre.style.margin = '0';
-        pre.style.padding = '2.5rem 1rem 1rem 1rem'; 
-        pre.style.backgroundColor = 'transparent'; 
+        pre.style.padding = '2.5rem 1rem 1rem 1rem';
+        pre.style.backgroundColor = 'transparent';
         pre.style.border = 'none';
+        pre.style.maxHeight = 'none';
+        pre.style.boxSizing = 'border-box';
 
         code.style.whiteSpace = 'pre';
         code.style.fontFamily = 'Fira Code, monospace';
@@ -195,93 +251,117 @@ function loadMarkdown(url, currentIndex = -1) {
         code.style.lineHeight = '1.5';
         code.style.display = 'block';
 
-        if (window.hljs) hljs.highlightElement(code);
+        if (window.hljs && typeof hljs.highlightElement === 'function') {
+          try { hljs.highlightElement(code); } catch (e) { /* ignore */ }
+        }
 
-        // 3. 复制按钮 (挂载到 wrapper 上，不随代码横向滚动)
+        // 复制按钮（挂在 wrapper，不随横向滚动）
         const copyBtn = document.createElement('button');
         copyBtn.innerText = '复制';
+        copyBtn.type = 'button';
         copyBtn.style.position = 'absolute';
-        copyBtn.style.top = '0.5rem';
-        copyBtn.style.right = '0.5rem';
-        copyBtn.style.padding = '0.25rem 0.6rem';
+        copyBtn.style.top = '0.6rem';
+        copyBtn.style.right = '0.6rem';
+        copyBtn.style.padding = '0.28rem 0.6rem';
         copyBtn.style.fontSize = '0.75rem';
         copyBtn.style.border = 'none';
         copyBtn.style.borderRadius = '4px';
         copyBtn.style.background = '#a78bfa';
         copyBtn.style.color = '#fff';
         copyBtn.style.cursor = 'pointer';
-        copyBtn.style.zIndex = '10';
-        
-        copyBtn.addEventListener('click', async () => {
-          try {
-            await navigator.clipboard.writeText(code.textContent);
+        copyBtn.style.zIndex = '12';
+        copyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          copyText(code.textContent || code.innerText).then(() => {
+            const prev = copyBtn.innerText;
             copyBtn.innerText = '已复制';
-          } catch (err) {
-            const textarea = document.createElement('textarea');
-            textarea.value = code.textContent;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            copyBtn.innerText = '已复制';
-          }
-          setTimeout(() => { copyBtn.innerText = '复制'; }, 1200);
+            setTimeout(() => { copyBtn.innerText = prev; }, 1200);
+          }).catch(() => {
+            const prev = copyBtn.innerText;
+            copyBtn.innerText = '复制失败';
+            setTimeout(() => { copyBtn.innerText = prev; }, 1200);
+          });
         });
         wrapper.appendChild(copyBtn);
 
-        // 4. 长代码块折叠功能 + 底部渐变遮罩
-        const MAX_HEIGHT = 400; 
-        if (pre.scrollHeight > MAX_HEIGHT) {
-          pre.style.maxHeight = `${MAX_HEIGHT}px`;
-          pre.style.overflowY = 'hidden';
-          pre.style.transition = 'max-height 0.3s ease';
+        // 长代码折叠与遮罩
+        const MAX_HEIGHT = 400; // px，可调
+        // 创建遮罩（pointer-events: none，使滚动/选中穿透）
+        const mask = document.createElement('div');
+        mask.className = 'code-mask';
+        mask.style.position = 'absolute';
+        mask.style.bottom = '0';
+        mask.style.left = '0';
+        mask.style.width = '100%';
+        mask.style.height = '88px';
+        mask.style.background = `linear-gradient(to bottom, transparent, rgba(30, 30, 47, ${currentOpacity}))`;
+        mask.style.pointerEvents = 'none';
+        mask.style.transition = 'opacity 0.2s ease';
+        mask.style.zIndex = '8';
+        // 折叠按钮（与复制按钮并列）
+        const toggleBtn = document.createElement('button');
+        toggleBtn.innerText = '展开';
+        toggleBtn.type = 'button';
+        toggleBtn.style.position = 'absolute';
+        toggleBtn.style.top = '0.6rem';
+        toggleBtn.style.right = '4.2rem';
+        toggleBtn.style.padding = '0.28rem 0.6rem';
+        toggleBtn.style.fontSize = '0.75rem';
+        toggleBtn.style.border = 'none';
+        toggleBtn.style.borderRadius = '4px';
+        toggleBtn.style.background = '#6b7280';
+        toggleBtn.style.color = '#fff';
+        toggleBtn.style.cursor = 'pointer';
+        toggleBtn.style.zIndex = '12';
+        toggleBtn.style.display = 'none';
 
-          // 渐变遮罩层
-          const mask = document.createElement('div');
-          mask.className = 'code-mask';
-          mask.style.position = 'absolute';
-          mask.style.bottom = '0';
-          mask.style.left = '0';
-          mask.style.width = '100%';
-          mask.style.height = '80px'; // 遮罩高度
-          mask.style.background = `linear-gradient(to bottom, transparent, rgba(30, 30, 47, ${currentOpacity}))`;
-          mask.style.pointerEvents = 'none'; // 确保鼠标能穿透遮罩去选中文本
-          mask.style.transition = 'opacity 0.3s ease';
-          wrapper.appendChild(mask);
+        // 等待一帧以便正确测量高度
+        requestAnimationFrame(() => {
+          // 如果 pre 的 scrollHeight 超过阈值，启用折叠 UI
+          if (pre.scrollHeight > MAX_HEIGHT + 6) {
+            // 折叠（保留垂直滚动以支持滑动查看）
+            pre.style.maxHeight = `${MAX_HEIGHT}px`;
+            pre.style.overflowY = 'auto'; // 关键：折叠时仍然允许垂直滚动查看
+            pre.style.webkitOverflowScrolling = 'touch';
+            // 显示遮罩与按钮
+            wrapper.appendChild(mask);
+            toggleBtn.style.display = 'inline-block';
+            toggleBtn.innerText = '展开';
+            wrapper.appendChild(toggleBtn);
+          } else {
+            // 不需要折叠时，让 pre 显示全部
+            pre.style.maxHeight = 'none';
+            pre.style.overflowY = 'auto';
+            mask.style.opacity = '0';
+            toggleBtn.style.display = 'none';
+          }
+        });
 
-          // 展开/折叠按钮
-          const toggleBtn = document.createElement('button');
-          toggleBtn.innerText = '展开';
-          toggleBtn.style.position = 'absolute';
-          toggleBtn.style.top = '0.5rem';
-          toggleBtn.style.right = '4rem'; 
-          toggleBtn.style.padding = '0.25rem 0.6rem';
-          toggleBtn.style.fontSize = '0.75rem';
-          toggleBtn.style.border = 'none';
-          toggleBtn.style.borderRadius = '4px';
-          toggleBtn.style.background = '#6b7280';
-          toggleBtn.style.color = '#fff';
-          toggleBtn.style.cursor = 'pointer';
-          toggleBtn.style.zIndex = '10';
-
-          let isExpanded = false;
-          toggleBtn.addEventListener('click', () => {
-            isExpanded = !isExpanded;
-            if (isExpanded) {
-              pre.style.maxHeight = `${pre.scrollHeight + 50}px`; // 展开时给足高度以防微调
-              mask.style.opacity = '0'; // 隐藏遮罩
-              toggleBtn.innerText = '折叠';
-              setTimeout(() => { if (isExpanded) pre.style.overflowY = 'auto'; }, 300);
-            } else {
-              pre.style.maxHeight = `${MAX_HEIGHT}px`;
-              pre.style.overflowY = 'hidden';
-              mask.style.opacity = '1'; // 显示遮罩
-              toggleBtn.innerText = '展开';
-              wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-          });
-          wrapper.appendChild(toggleBtn);
-        }
+        // 折叠/展开逻辑（始终保留垂直滚动；展开时移除 maxHeight 限制）
+        let isExpanded = false;
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          isExpanded = !isExpanded;
+          if (isExpanded) {
+            pre.style.maxHeight = `${pre.scrollHeight + 60}px`; // 给足高度
+            pre.style.overflowY = 'auto';
+            mask.style.opacity = '0';
+            toggleBtn.innerText = '折叠';
+            // 小延迟后移除 maxHeight，让内容自然撑开（保留一段时间的 maxHeight 防抖）
+            setTimeout(() => {
+              if (isExpanded) {
+                pre.style.maxHeight = 'none';
+              }
+            }, 260);
+          } else {
+            pre.style.maxHeight = `${MAX_HEIGHT}px`;
+            pre.style.overflowY = 'auto';
+            mask.style.opacity = '1';
+            toggleBtn.innerText = '展开';
+            // 折叠时将 wrapper 滚动到视口（便于用户看到顶部）
+            wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
       });
 
       // 页面标题与导航状态更新
@@ -320,17 +400,15 @@ function loadMarkdown(url, currentIndex = -1) {
 
 // ========== 透明度控制函数 ==========
 function updateContentOpacity(val) {
-  const fixed = parseFloat(val).toFixed(2);
+  const fixed = Math.max(0, Math.min(1, parseFloat(val))) || 0;
   currentOpacity = fixed;
   document.documentElement.style.setProperty('--content-bg-opacity', fixed);
-  fixed <= 0.01 ? contentEl.setAttribute('data-opacity', '0') : contentEl.removeAttribute('data-opacity');
+  if (fixed <= 0.01) contentEl.setAttribute('data-opacity', '0'); else contentEl.removeAttribute('data-opacity');
 
-  // 同步更新代码块包裹层背景透明度
+  // 同步更新 code-wrapper 背景 & 遮罩
   contentEl.querySelectorAll('.code-wrapper').forEach(wrapper => {
     wrapper.style.backgroundColor = `rgba(30, 30, 47, ${fixed})`;
   });
-
-  // 同步更新遮罩层的渐变透明度（完美融入背景）
   contentEl.querySelectorAll('.code-mask').forEach(mask => {
     mask.style.background = `linear-gradient(to bottom, transparent, rgba(30, 30, 47, ${fixed}))`;
   });

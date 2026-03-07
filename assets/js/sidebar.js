@@ -17,6 +17,9 @@ if (sidebar && sidebarToggle) {
   const sidebarGap = 12;
   const sidebarWidth = 195 + 32;
 
+  const ADSORB_DISTANCE = 200;
+  const DETACH_DISTANCE = 200;
+
   const toggleSidebar = () => {
 
     const toggleRect = sidebarToggle.getBoundingClientRect();
@@ -120,48 +123,6 @@ if (sidebar && sidebarToggle) {
       sidebarToggle.style.top = `${newTop}px`;
 
       sidebarToggle.classList.add('dragging');
-
-      // ===== 检测是否脱离音乐球 =====
-
-      if (isMergedWithMusic) {
-
-        const musicBall = document.getElementById('music-toggle-btn');
-
-        if (musicBall) {
-
-          const musicRect = musicBall.getBoundingClientRect();
-
-          const musicCenter = {
-            x: musicRect.left + musicRect.width / 2,
-            y: musicRect.top + musicRect.height / 2
-          };
-
-          const navRect = sidebarToggle.getBoundingClientRect();
-
-          const navCenter = {
-            x: navRect.left + navRect.width / 2,
-            y: navRect.top + navRect.height / 2
-          };
-
-          const dist = Math.hypot(
-            navCenter.x - musicCenter.x,
-            navCenter.y - musicCenter.y
-          );
-
-          const DETACH_DISTANCE = 120;
-
-          if (dist > DETACH_DISTANCE) {
-
-            const audio = document.getElementById('bgm');
-
-            if (audio && !audio.paused) {
-              audio.pause();
-            }
-
-            isMergedWithMusic = false;
-          }
-        }
-      }
     }
   };
 
@@ -196,8 +157,6 @@ if (sidebar && sidebarToggle) {
           navCenter.y - musicCenter.y
         );
 
-        const ADSORB_DISTANCE = 100;
-
         if (dist < ADSORB_DISTANCE) {
 
           const targetLeft = Math.round(musicCenter.x - navRect.width / 2);
@@ -209,22 +168,19 @@ if (sidebar && sidebarToggle) {
           sidebarToggle.style.left = `${targetLeft}px`;
           sidebarToggle.style.top = `${targetTop}px`;
 
-          // ===== 修复：确保每次吸附都会尝试播放音乐（优先通过播放按钮触发，若无效再 fallback 到 audio.play） =====
           const audio = document.getElementById('bgm');
 
           if (audio) {
+
             const playBtn = document.getElementById('toggle-music');
-            if (playBtn) {
-              // 先触发播放按钮的 click（以保持 UI 状态同步），
-              // 然后短延迟后检查 audio 是否仍处于暂停状态，若是则直接调用 play() 作为后备。
-              playBtn.click();
-              setTimeout(() => {
-                if (audio.paused) {
-                  audio.play().catch(() => {});
-                }
-              }, 50);
-            } else {
-              audio.play().catch(() => {});
+
+            if (audio.paused) {
+
+              if (playBtn) {
+                playBtn.click();
+              } else {
+                audio.play().catch(() => {});
+              }
             }
           }
 
@@ -283,6 +239,60 @@ if (sidebar && sidebarToggle) {
       }
     }
   });
+
+  // =============================
+  // 新增：持续检测两球距离
+  // =============================
+
+  function checkDetach() {
+
+    if (isMergedWithMusic) {
+
+      const musicBall = document.getElementById('music-toggle-btn');
+      const audio = document.getElementById('bgm');
+
+      if (musicBall && audio) {
+
+        const musicRect = musicBall.getBoundingClientRect();
+        const navRect = sidebarToggle.getBoundingClientRect();
+
+        const musicCenter = {
+          x: musicRect.left + musicRect.width / 2,
+          y: musicRect.top + musicRect.height / 2
+        };
+
+        const navCenter = {
+          x: navRect.left + navRect.width / 2,
+          y: navRect.top + navRect.height / 2
+        };
+
+        const dist = Math.hypot(
+          navCenter.x - musicCenter.x,
+          navCenter.y - musicCenter.y
+        );
+
+        if (dist > DETACH_DISTANCE) {
+
+          if (!audio.paused) {
+
+            const playBtn = document.getElementById('toggle-music');
+
+            if (playBtn) {
+              playBtn.click();
+            } else {
+              audio.pause();
+            }
+          }
+
+          isMergedWithMusic = false;
+        }
+      }
+    }
+
+    requestAnimationFrame(checkDetach);
+  }
+
+  checkDetach();
 
   // 恢复位置
   const savedLeft = localStorage.getItem('sidebarPosX');

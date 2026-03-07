@@ -1,4 +1,4 @@
-// starfield.js - 优化版：更真实梦幻星云 + 刷新按钮
+// starfield.js - 完整优化版：更真实梦幻星云 + 刷新按钮 + 星星动态频率跳动（每颗幅度不同）
 const canvas = document.getElementById('starfield');
 const ctx = canvas.getContext('2d');
 
@@ -27,6 +27,7 @@ const CONFIG = {
   nebulaSpeed: 0.08
 };
 
+// ──────────────── 初始化画布 ────────────────
 function resize() {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
@@ -35,9 +36,11 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// ──────────────── 创建星星 ────────────────
 function createStars() {
   stars = [];
   for (let i = 0; i < CONFIG.starCount; i++) {
+    const baseFreq = 0.2 + Math.random() * 3.8;
     stars.push({
       x: Math.random() * width,
       y: Math.random() * height,
@@ -45,14 +48,16 @@ function createStars() {
       size: Math.random() * 1.4 + 0.35,
       brightness: Math.random() * 0.65 + 0.35,
       phase: Math.random() * Math.PI * 2,
-      // 优化点：增大频率跨度 (0.2 极慢到 4.0 极快)
-      freq: 0.2 + Math.random() * 3.8, 
+      freq: baseFreq,
+      baseFreq: baseFreq,       // 原始频率
+      freqAmplitude: 0.3 + Math.random() * 0.5, // 动态频率波动幅度，每颗不同
       twinkle: Math.random() > 0.68
     });
   }
 }
 createStars();
 
+// ──────────────── 创建星云 ────────────────
 function createNebulae() {
   nebulae = [];
   for (let i = 0; i < CONFIG.nebulaCount; i++) {
@@ -75,6 +80,7 @@ function createNebulae() {
   }
 }
 
+// ──────────────── 流星生成 ────────────────
 function createShootingStar() {
   if (Math.random() < CONFIG.meteorFrequency) {
     const angle = CONFIG.meteorAngleMin + Math.random() * (CONFIG.meteorAngleMax - CONFIG.meteorAngleMin);
@@ -93,7 +99,7 @@ function createShootingStar() {
   }
 }
 
-// 绘制更真实梦幻的星云
+// ──────────────── 绘制星云 ────────────────
 function drawNebula(n) {
   const pulse = Math.sin(Date.now() / 12000 + n.pulsePhase) * 0.12 + 0.88;
 
@@ -136,6 +142,7 @@ function drawNebula(n) {
   ctx.globalAlpha = 1;
 }
 
+// ──────────────── 绘制十字光晕 ────────────────
 function drawCrossFlare(sx, sy, size, brightness, z) {
   if (z < 650 || size > 0.9) return;
 
@@ -165,8 +172,8 @@ function drawCrossFlare(sx, sy, size, brightness, z) {
   ctx.restore();
 }
 
-// 优化点：接收 freq 和 phase 参数，实现差异化闪烁
-function drawStar(sx, sy, size, brightness, twinkle, z, freq, phase) {
+// ──────────────── 绘制星星（动态频率） ────────────────
+function drawStar(sx, sy, size, brightness, twinkle, z, freq, phase, starObj) {
   ctx.beginPath();
   ctx.arc(sx, sy, size, 0, Math.PI * 2);
   ctx.fillStyle = `rgba(240, 250, 255, ${brightness})`;
@@ -175,8 +182,10 @@ function drawStar(sx, sy, size, brightness, twinkle, z, freq, phase) {
   drawCrossFlare(sx, sy, size, brightness, z);
 
   if (twinkle) {
-    // 使用每个星星独立的频率 freq 和相位 phase
-    const pulse = Math.sin(Date.now() * 0.002 * freq + phase) * 0.4 + 0.6;
+    // 动态频率：freq = baseFreq * (1 + sin(...)*幅度)
+    const dynamicFreq = starObj.baseFreq * (1 + Math.sin(Date.now() * 0.05 + starObj.phase) * starObj.freqAmplitude);
+    const pulse = Math.sin(Date.now() * 0.002 * dynamicFreq + phase) * 0.4 + 0.6;
+
     ctx.globalAlpha = pulse;
     ctx.beginPath();
     ctx.arc(sx, sy, size * 1.35, 0, Math.PI * 2);
@@ -186,6 +195,7 @@ function drawStar(sx, sy, size, brightness, twinkle, z, freq, phase) {
   }
 }
 
+// ──────────────── 主循环 ────────────────
 function animate() {
   ctx.fillStyle = 'rgba(0, 0, 0, 0.085)';
   ctx.fillRect(0, 0, width, height);
@@ -218,8 +228,7 @@ function animate() {
       opacity *= (0.1 + 0.9 * breathing);
     }
 
-    // 优化点：传入 freq 和 phase
-    drawStar(sx, sy, size, opacity, star.twinkle, star.z, star.freq, star.phase);
+    drawStar(sx, sy, size, opacity, star.twinkle, star.z, star.freq, star.phase, star);
 
     if (Math.random() < 0.002) star.brightness = Math.random() * 0.5 + 0.5;
   });
@@ -264,7 +273,7 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-// ──────────────── 滑块绑定 ────────────────
+// ──────────────── 控制面板绑定 ────────────────
 const s_speed = document.getElementById('ctrl-starspeed-abs');
 const v_speed = document.getElementById('val-starspeed-abs');
 if(s_speed) {
@@ -338,9 +347,6 @@ if (btnRefreshNebula) {
   };
 }
 
-// 启动
-requestAnimationFrame(animate);
-
 // 控制面板开关逻辑
 const toggleBtn = document.getElementById('starfield-toggle-btn');
 const controls = document.getElementById('starfield-controls');
@@ -365,3 +371,6 @@ if (toggleBtn && controls) {
     }
   });
 }
+
+// 启动动画
+requestAnimationFrame(animate);

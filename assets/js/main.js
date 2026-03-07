@@ -1,14 +1,13 @@
-// main.js - 精简版：移除音乐控件，只保留核心功能 + 自动适配 GitHub Pages
+// main.js - 完整版：保留原有功能 + 修复搜索退出在 GitHub Pages 404
 const contentEl = document.getElementById('content');
 
 // ========== 路径修复逻辑：自动识别 GitHub 仓库名 ==========
 const getBasePath = () => {
   if (window.location.hostname.includes('github.io')) {
-    return '/growth-journal/'; 
+    return '/growth-journal/';
   }
   return '/';
 };
-
 const BASE_PATH = getBasePath();
 
 const fixUrl = (url) => {
@@ -18,20 +17,20 @@ const fixUrl = (url) => {
   return BASE_PATH + cleanUrl;
 };
 
-// 配置
+// ========== 配置 ==========
 const ITEMS_PER_PAGE = 3;
 let currentPage = 1;
 let currentSearchKeyword = '';
 let allEntries = [];
 
-// 保存当前页面状态（文章或列表）
+// 保存当前页面状态
 let currentViewState = { type: 'list', url: null, index: -1, page: 1 };
 
+// ========== 搜索框相关 ==========
 let searchContainer = null;
 let searchInput = null;
 let searchToggleBtn = null;
 
-// ========== 搜索框初始化 ==========
 function initSearchBox() {
   if (document.getElementById('search-toggle-btn')) return;
 
@@ -57,13 +56,12 @@ function initSearchBox() {
     if (shouldShow) {
       // 打开搜索前保存当前状态
       currentViewState = getCurrentState();
-
       searchContainer.classList.add('show');
       setTimeout(() => {
         searchInput.focus();
         if (searchInput.value.trim()) {
           currentSearchKeyword = searchInput.value.trim();
-          loadAllEntries(); // 搜索时显示列表
+          loadAllEntries();
         }
       }, 300);
     } else {
@@ -99,7 +97,7 @@ function initSearchBox() {
   });
 }
 
-// 获取当前状态
+// ========== 状态管理 ==========
 function getCurrentState() {
   const state = history.state || {};
   if (state.type === 'md' && state.url) {
@@ -111,7 +109,7 @@ function getCurrentState() {
   }
 }
 
-// 恢复原状态
+// 修复 GitHub Pages 404 问题
 function restorePreviousState() {
   if (currentViewState.type === 'md' && currentViewState.url) {
     loadMarkdown(currentViewState.url, currentViewState.index);
@@ -119,9 +117,11 @@ function restorePreviousState() {
     currentSearchKeyword = '';
     renderDiaryList(currentViewState.page || 1);
     document.title = '所有日记 | 我的成长日记';
+    history.replaceState({ type: 'list' }, '', '#all'); // ✅ 修复退出搜索后 404
   }
 }
 
+// ========== 工具 ==========
 function showLoading() {
   contentEl.innerHTML = '<div class="loading" style="text-align:center; padding:6rem 1rem; color:#888;">加载中...</div>';
 }
@@ -135,6 +135,7 @@ function showError(message, detail = '') {
     </div>`;
 }
 
+// ========== 文章加载 ==========
 function loadMarkdown(url, currentIndex = -1) {
   showLoading();
   const fetchUrl = fixUrl(url);
@@ -169,7 +170,6 @@ function loadMarkdown(url, currentIndex = -1) {
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
       history.pushState({ type: 'md', url: fetchUrl, index: currentIndex }, '', fetchUrl);
 
-      // 文章内链接
       contentEl.querySelectorAll('[data-entry-link]').forEach(link => {
         link.addEventListener('click', e => {
           e.preventDefault();
@@ -182,7 +182,6 @@ function loadMarkdown(url, currentIndex = -1) {
         });
       });
 
-      // 返回按钮逻辑
       const exitBtn = document.getElementById('exit-article-btn');
       if (exitBtn) {
         exitBtn.addEventListener('click', () => {
@@ -197,6 +196,7 @@ function loadMarkdown(url, currentIndex = -1) {
     });
 }
 
+// ========== 列表渲染 ==========
 function renderDiaryList(page = 1) {
   let filtered = allEntries;
   if (currentSearchKeyword) {
@@ -272,6 +272,7 @@ function renderDiaryList(page = 1) {
   });
 }
 
+// ========== 加载所有文章 ==========
 function loadAllEntries() {
   showLoading();
   const possibleUrls = ['entries/index.json', 'index.json'];
@@ -305,7 +306,9 @@ function loadAllEntries() {
         document.querySelectorAll('.nav-item').forEach(el => {
           el.classList.toggle('active', el.id === 'all-diaries-link');
         });
-        history.pushState({ type: 'list' }, '', '#all');
+
+        // ✅ 修复退出搜索后 GitHub Pages 404
+        history.replaceState({ type: 'list' }, '', '#all');
       })
       .catch(err => {
         console.warn(`尝试 ${fetchUrl} 失败:`, err);
@@ -316,7 +319,7 @@ function loadAllEntries() {
   tryNext();
 }
 
-// 初始化
+// ========== 初始化 ==========
 document.addEventListener('DOMContentLoaded', () => {
   initSearchBox();
 
@@ -350,6 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadMarkdown('about.md');
   }
 
+  // 透明度控制
   const opacitySlider = document.getElementById('ctrl-content-opacity');
   const opacityValueSpan = document.getElementById('val-content-opacity');
   if (opacitySlider && opacityValueSpan) {
@@ -365,10 +369,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 引用轮播
   const quotes = [
-    { text: "我们都是星星的孩子。"},
-    { text: "我们来自星辰，也将奔赴星辰。"},
-    { text: "我们都在阴沟里，但仍有人仰望星空。"},
-    { text: "每一个不曾起舞的日子，都是对生命的辜负。"}
+    { text: "我们都是星星的孩子。" },
+    { text: "我们来自星辰，也将奔赴星辰。" },
+    { text: "我们都在阴沟里，但仍有人仰望星空。" },
+    { text: "每一个不曾起舞的日子，都是对生命的辜负。" }
   ];
 
   let currentQuoteIndex = 0;
@@ -382,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
       quoteElement.innerText = `“${quote.text}”`;
       currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
       container.classList.remove('quote-fade');
-    }, 500); 
+    }, 500);
   }
 
   updateQuote();

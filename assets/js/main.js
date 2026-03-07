@@ -1,10 +1,10 @@
-// main.js - 完整版：保留原有功能 + 修复搜索退出在 GitHub Pages 404
+// main.js - 精简版：保留核心功能 + 自动代码高亮 + 代码透明度同步 + 复制按钮 + 图片自适应 + 自动适配 GitHub Pages + 长代码折叠及遮罩 + 平滑圆角
 const contentEl = document.getElementById('content');
 
 // ========== 路径修复逻辑：自动识别 GitHub 仓库名 ==========
 const getBasePath = () => {
   if (window.location.hostname.includes('github.io')) {
-    return '/growth-journal/';
+    return '/growth-journal/'; 
   }
   return '/';
 };
@@ -17,20 +17,34 @@ const fixUrl = (url) => {
   return BASE_PATH + cleanUrl;
 };
 
-// ========== 配置 ==========
+// 配置
 const ITEMS_PER_PAGE = 3;
 let currentPage = 1;
 let currentSearchKeyword = '';
 let allEntries = [];
+let currentOpacity = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--content-bg-opacity')) || 1;
 
-// 保存当前页面状态
-let currentViewState = { type: 'list', url: null, index: -1, page: 1 };
-
-// ========== 搜索框相关 ==========
+// 搜索框变量
 let searchContainer = null;
 let searchInput = null;
 let searchToggleBtn = null;
 
+// ========== 自动加载 highlight.js ==========
+(function loadHighlightJS() {
+  if (!window.hljs) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js';
+    script.onload = () => { /* hljs 自动可用 */ };
+    document.head.appendChild(script);
+  }
+})();
+
+// ========== 搜索框初始化 ==========
 function initSearchBox() {
   if (document.getElementById('search-toggle-btn')) return;
 
@@ -54,8 +68,6 @@ function initSearchBox() {
     const shouldShow = show !== null ? show : !isVisible;
 
     if (shouldShow) {
-      // 打开搜索前保存当前状态
-      currentViewState = getCurrentState();
       searchContainer.classList.add('show');
       setTimeout(() => {
         searchInput.focus();
@@ -66,8 +78,6 @@ function initSearchBox() {
       }, 300);
     } else {
       searchContainer.classList.remove('show');
-      // 搜索关闭后恢复原状态
-      restorePreviousState();
     }
   }
 
@@ -97,31 +107,6 @@ function initSearchBox() {
   });
 }
 
-// ========== 状态管理 ==========
-function getCurrentState() {
-  const state = history.state || {};
-  if (state.type === 'md' && state.url) {
-    return { type: 'md', url: state.url, index: state.index ?? -1 };
-  } else if (state.type === 'list') {
-    return { type: 'list', page: currentPage };
-  } else {
-    return { type: 'list', page: 1 };
-  }
-}
-
-// 修复 GitHub Pages 404 问题
-function restorePreviousState() {
-  if (currentViewState.type === 'md' && currentViewState.url) {
-    loadMarkdown(currentViewState.url, currentViewState.index);
-  } else {
-    currentSearchKeyword = '';
-    renderDiaryList(currentViewState.page || 1);
-    document.title = '所有日记 | 我的成长日记';
-    history.replaceState({ type: 'list' }, '', '#all'); // ✅ 修复退出搜索后 404
-  }
-}
-
-// ========== 工具 ==========
 function showLoading() {
   contentEl.innerHTML = '<div class="loading" style="text-align:center; padding:6rem 1rem; color:#888;">加载中...</div>';
 }
@@ -135,7 +120,7 @@ function showError(message, detail = '') {
     </div>`;
 }
 
-// ========== 文章加载 ==========
+// ========== 渲染 Markdown 并优化代码块和图片 ==========
 function loadMarkdown(url, currentIndex = -1) {
   showLoading();
   const fetchUrl = fixUrl(url);
@@ -147,7 +132,10 @@ function loadMarkdown(url, currentIndex = -1) {
     })
     .then(md => {
       const html = marked.parse(md);
+
       let finalHtml = `<div class="markdown-content">${html}</div>`;
+
+      // 导航逻辑
       if (currentIndex >= 0 && allEntries.length > 1) {
         finalHtml += '<div class="article-nav" style="margin-top:3rem; padding-top:2rem; border-top:1px solid rgba(120,140,255,0.25); text-align:center; font-size:1.1rem;">';
         if (currentIndex > 0) {
@@ -160,16 +148,149 @@ function loadMarkdown(url, currentIndex = -1) {
           const nextFilename = next.filename || (next.date ? `${next.date}.md` : null);
           if (nextFilename) finalHtml += `<a href="entries/${nextFilename}" class="nav-link next" data-entry-link style="margin:0 1.5rem; color:#a78bfa; text-decoration:none;">下一篇 →</a>`;
         }
-        finalHtml += `<button id="exit-article-btn" style="margin-left:2rem; padding:0.3rem 0.8rem; font-size:1rem; border:none; border-radius:4px; background:#a78bfa; color:#fff; cursor:pointer;">返回</button>`;
+        finalHtml += `<button id="exit-article-btn" style="margin-left:2rem; padding:0.3rem 0.8rem; font-size:1rem; border:none; border-radius:4px; background:#a78bfa; color:#fff; cursor:pointer;">退出</button>`;
         finalHtml += '</div>';
       }
+
       contentEl.innerHTML = finalHtml;
 
+      // 图片自适应与圆滑处理
+      contentEl.querySelectorAll('.markdown-content img').forEach(img => {
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        img.style.margin = '1.5rem auto';
+        img.style.borderRadius = '10px'; // 图片圆角
+        img.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'; // 轻微阴影增强质感
+      });
+
+      // 代码块优化：创建 Wrapper 包裹层，解决横向滚动时按钮飘走的问题
+      contentEl.querySelectorAll('.markdown-content pre > code').forEach(code => {
+        const pre = code.parentElement;
+
+        // 1. 创建 Wrapper 包裹层
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-wrapper';
+        wrapper.style.position = 'relative';
+        wrapper.style.margin = '1.5rem 0';
+        wrapper.style.borderRadius = '10px'; // 代码块圆角
+        wrapper.style.overflow = 'hidden';   // 裁剪内部内容，使圆角生效
+        wrapper.style.backgroundColor = `rgba(30, 30, 47, ${currentOpacity})`;
+        wrapper.style.transition = 'background-color 0.3s ease';
+
+        // 将 wrapper 插入 DOM，并把原本的 pre 放进去
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(pre);
+
+        // 2. 调整 pre 样式（交由 wrapper 负责背景和圆角）
+        pre.style.overflowX = 'auto';
+        pre.style.margin = '0';
+        pre.style.padding = '2.5rem 1rem 1rem 1rem'; 
+        pre.style.backgroundColor = 'transparent'; 
+        pre.style.border = 'none';
+
+        code.style.whiteSpace = 'pre';
+        code.style.fontFamily = 'Fira Code, monospace';
+        code.style.fontSize = '0.95rem';
+        code.style.lineHeight = '1.5';
+        code.style.display = 'block';
+
+        if (window.hljs) hljs.highlightElement(code);
+
+        // 3. 复制按钮 (挂载到 wrapper 上，不随代码横向滚动)
+        const copyBtn = document.createElement('button');
+        copyBtn.innerText = '复制';
+        copyBtn.style.position = 'absolute';
+        copyBtn.style.top = '0.5rem';
+        copyBtn.style.right = '0.5rem';
+        copyBtn.style.padding = '0.25rem 0.6rem';
+        copyBtn.style.fontSize = '0.75rem';
+        copyBtn.style.border = 'none';
+        copyBtn.style.borderRadius = '4px';
+        copyBtn.style.background = '#a78bfa';
+        copyBtn.style.color = '#fff';
+        copyBtn.style.cursor = 'pointer';
+        copyBtn.style.zIndex = '10';
+        
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(code.textContent);
+            copyBtn.innerText = '已复制';
+          } catch (err) {
+            const textarea = document.createElement('textarea');
+            textarea.value = code.textContent;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            copyBtn.innerText = '已复制';
+          }
+          setTimeout(() => { copyBtn.innerText = '复制'; }, 1200);
+        });
+        wrapper.appendChild(copyBtn);
+
+        // 4. 长代码块折叠功能 + 底部渐变遮罩
+        const MAX_HEIGHT = 400; 
+        if (pre.scrollHeight > MAX_HEIGHT) {
+          pre.style.maxHeight = `${MAX_HEIGHT}px`;
+          pre.style.overflowY = 'hidden';
+          pre.style.transition = 'max-height 0.3s ease';
+
+          // 渐变遮罩层
+          const mask = document.createElement('div');
+          mask.className = 'code-mask';
+          mask.style.position = 'absolute';
+          mask.style.bottom = '0';
+          mask.style.left = '0';
+          mask.style.width = '100%';
+          mask.style.height = '80px'; // 遮罩高度
+          mask.style.background = `linear-gradient(to bottom, transparent, rgba(30, 30, 47, ${currentOpacity}))`;
+          mask.style.pointerEvents = 'none'; // 确保鼠标能穿透遮罩去选中文本
+          mask.style.transition = 'opacity 0.3s ease';
+          wrapper.appendChild(mask);
+
+          // 展开/折叠按钮
+          const toggleBtn = document.createElement('button');
+          toggleBtn.innerText = '展开';
+          toggleBtn.style.position = 'absolute';
+          toggleBtn.style.top = '0.5rem';
+          toggleBtn.style.right = '4rem'; 
+          toggleBtn.style.padding = '0.25rem 0.6rem';
+          toggleBtn.style.fontSize = '0.75rem';
+          toggleBtn.style.border = 'none';
+          toggleBtn.style.borderRadius = '4px';
+          toggleBtn.style.background = '#6b7280';
+          toggleBtn.style.color = '#fff';
+          toggleBtn.style.cursor = 'pointer';
+          toggleBtn.style.zIndex = '10';
+
+          let isExpanded = false;
+          toggleBtn.addEventListener('click', () => {
+            isExpanded = !isExpanded;
+            if (isExpanded) {
+              pre.style.maxHeight = `${pre.scrollHeight + 50}px`; // 展开时给足高度以防微调
+              mask.style.opacity = '0'; // 隐藏遮罩
+              toggleBtn.innerText = '折叠';
+              setTimeout(() => { if (isExpanded) pre.style.overflowY = 'auto'; }, 300);
+            } else {
+              pre.style.maxHeight = `${MAX_HEIGHT}px`;
+              pre.style.overflowY = 'hidden';
+              mask.style.opacity = '1'; // 显示遮罩
+              toggleBtn.innerText = '展开';
+              wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          });
+          wrapper.appendChild(toggleBtn);
+        }
+      });
+
+      // 页面标题与导航状态更新
       const h1 = contentEl.querySelector('h1');
       document.title = h1 ? h1.textContent.trim() + ' | 我的成长日记' : '我的成长日记';
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
       history.pushState({ type: 'md', url: fetchUrl, index: currentIndex }, '', fetchUrl);
 
+      // 绑定文章底部导航链接
       contentEl.querySelectorAll('[data-entry-link]').forEach(link => {
         link.addEventListener('click', e => {
           e.preventDefault();
@@ -182,6 +303,7 @@ function loadMarkdown(url, currentIndex = -1) {
         });
       });
 
+      // 绑定退出按钮
       const exitBtn = document.getElementById('exit-article-btn');
       if (exitBtn) {
         exitBtn.addEventListener('click', () => {
@@ -196,7 +318,25 @@ function loadMarkdown(url, currentIndex = -1) {
     });
 }
 
-// ========== 列表渲染 ==========
+// ========== 透明度控制函数 ==========
+function updateContentOpacity(val) {
+  const fixed = parseFloat(val).toFixed(2);
+  currentOpacity = fixed;
+  document.documentElement.style.setProperty('--content-bg-opacity', fixed);
+  fixed <= 0.01 ? contentEl.setAttribute('data-opacity', '0') : contentEl.removeAttribute('data-opacity');
+
+  // 同步更新代码块包裹层背景透明度
+  contentEl.querySelectorAll('.code-wrapper').forEach(wrapper => {
+    wrapper.style.backgroundColor = `rgba(30, 30, 47, ${fixed})`;
+  });
+
+  // 同步更新遮罩层的渐变透明度（完美融入背景）
+  contentEl.querySelectorAll('.code-mask').forEach(mask => {
+    mask.style.background = `linear-gradient(to bottom, transparent, rgba(30, 30, 47, ${fixed}))`;
+  });
+}
+
+// ========== renderDiaryList / loadAllEntries / DOMContentLoaded 初始化逻辑 ==========
 function renderDiaryList(page = 1) {
   let filtered = allEntries;
   if (currentSearchKeyword) {
@@ -272,7 +412,6 @@ function renderDiaryList(page = 1) {
   });
 }
 
-// ========== 加载所有文章 ==========
 function loadAllEntries() {
   showLoading();
   const possibleUrls = ['entries/index.json', 'index.json'];
@@ -306,9 +445,7 @@ function loadAllEntries() {
         document.querySelectorAll('.nav-item').forEach(el => {
           el.classList.toggle('active', el.id === 'all-diaries-link');
         });
-
-        // ✅ 修复退出搜索后 GitHub Pages 404
-        history.replaceState({ type: 'list' }, '', '#all');
+        history.pushState({ type: 'list' }, '', '#all');
       })
       .catch(err => {
         console.warn(`尝试 ${fetchUrl} 失败:`, err);
@@ -353,26 +490,20 @@ document.addEventListener('DOMContentLoaded', () => {
     loadMarkdown('about.md');
   }
 
-  // 透明度控制
+  // 内容透明度 slider
   const opacitySlider = document.getElementById('ctrl-content-opacity');
   const opacityValueSpan = document.getElementById('val-content-opacity');
   if (opacitySlider && opacityValueSpan) {
-    const updateOpacity = (val) => {
-      const fixed = parseFloat(val).toFixed(2);
-      document.documentElement.style.setProperty('--content-bg-opacity', fixed);
-      opacityValueSpan.textContent = fixed;
-      fixed <= 0.01 ? contentEl.setAttribute('data-opacity', '0') : contentEl.removeAttribute('data-opacity');
-    };
-    updateOpacity(opacitySlider.value);
-    opacitySlider.addEventListener('input', (e) => updateOpacity(e.target.value));
+    updateContentOpacity(opacitySlider.value);
+    opacitySlider.addEventListener('input', (e) => updateContentOpacity(e.target.value));
   }
 
   // 引用轮播
   const quotes = [
-    { text: "我们都是星星的孩子。" },
-    { text: "我们来自星辰，也将奔赴星辰。" },
-    { text: "我们都在阴沟里，但仍有人仰望星空。" },
-    { text: "每一个不曾起舞的日子，都是对生命的辜负。" }
+    { text: "我们都是星星的孩子。"},
+    { text: "我们来自星辰，也将奔赴星辰。"},
+    { text: "我们都在阴沟里，但仍有人仰望星空。"},
+    { text: "每一个不曾起舞的日子，都是对生命的辜负。"}
   ];
 
   let currentQuoteIndex = 0;
@@ -386,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
       quoteElement.innerText = `“${quote.text}”`;
       currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
       container.classList.remove('quote-fade');
-    }, 500);
+    }, 500); 
   }
 
   updateQuote();

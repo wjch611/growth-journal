@@ -182,7 +182,7 @@ function loadMarkdown(url, currentIndex = -1) {
         });
       });
 
-      // 退出按钮逻辑
+      // 返回按钮逻辑
       const exitBtn = document.getElementById('exit-article-btn');
       if (exitBtn) {
         exitBtn.addEventListener('click', () => {

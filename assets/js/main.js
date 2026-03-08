@@ -10,29 +10,38 @@ const getBasePath = () => {
 };
 const BASE_PATH = getBasePath();
 
-// 彻底防重复拼接的 fixUrl
+
 const fixUrl = (url) => {
   if (!url) return '';
 
+  // 已经是完整 URL，直接返回
   if (url.startsWith('http') || url.startsWith('blob') || url.startsWith('data:')) {
     return url;
   }
 
-  let cleanPath = url.replace(/^\/+/, '');
+  // 统一处理：先把 url 转成相对路径（去掉开头的 /）
+  let path = url.replace(/^\/+/, '');
 
+  // 如果 BASE_PATH 是根，直接返回
   if (BASE_PATH === '/' || BASE_PATH === '') {
-    return '/' + cleanPath;
+    return '/' + path;
   }
 
-  const repoSlug = BASE_PATH.replace(/^\/+/, '').replace(/\/+$/, '');
+  // 提取仓库名（去掉 /）
+  const repo = BASE_PATH.replace(/^\/+/, '').replace(/\/+$/, '');
 
-  if (cleanPath.startsWith(repoSlug + '/')) {
-    cleanPath = cleanPath.substring(repoSlug.length + 1);
-  } else if (cleanPath === repoSlug) {
-    cleanPath = '';
+  // 关键修复：如果 path 以 repo 开头（GitHub Pages 常见），移除这个前缀
+  if (path.startsWith(repo + '/')) {
+    path = path.substring(repo.length + 1);
+  } else if (path === repo) {
+    path = '';
   }
 
-  return BASE_PATH + cleanPath;
+  // 最终拼接（现在 path 已去重）
+  const final = BASE_PATH + path;
+
+  // 额外清理：防止多余斜杠
+  return final.replace(/\/+/g, '/');
 };
 
 // ========== 注入滚动条透明样式（WebKit + Firefox） ==========

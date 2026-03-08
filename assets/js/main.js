@@ -13,19 +13,32 @@ const BASE_PATH = getBasePath();
 
 const fixUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http') || url.startsWith('blob') || url.startsWith('data:')) return url;
 
-  // 移除开头的 /，得到相对路径
-  let cleanUrl = url.replace(/^\//, '');
-
-  // 如果 cleanUrl 已经以仓库名开头（常见于 GitHub Pages 相对链接被浏览器解析后），则不重复添加 BASE_PATH
-  if (BASE_PATH !== '/' && cleanUrl.startsWith(BASE_PATH.replace(/^\//, '').replace(/\/$/, ''))) {
-    return '/' + cleanUrl;  // 直接返回浏览器已解析的路径（已带仓库名）
+  // 已经是完整 URL，直接返回
+  if (url.startsWith('http') || url.startsWith('blob') || url.startsWith('data:')) {
+    return url;
   }
 
-  // 正常情况：拼接 BASE_PATH
+  // 移除开头的斜杠，得到纯相对路径
+  let cleanUrl = url.replace(/^\//, '');
+
+  // 如果 BASE_PATH 是 '/'（本地开发或根部署），直接返回 cleanUrl
+  if (BASE_PATH === '/' || BASE_PATH === '') {
+    return '/' + cleanUrl;
+  }
+
+  // 提取仓库名（去掉前后斜杠）
+  const repoName = BASE_PATH.replace(/^\//, '').replace(/\/$/, '');
+
+  // 如果 cleanUrl 已经以仓库名开头（GitHub Pages 常见情况），直接返回 / + cleanUrl（避免重复）
+  if (cleanUrl.startsWith(repoName + '/')) {
+    return '/' + cleanUrl;
+  }
+
+  // 正常情况：前面拼接 BASE_PATH
   return BASE_PATH + cleanUrl;
 };
+
 
 // ========== 注入滚动条透明样式（WebKit + Firefox） ==========
 (function injectScrollbarStyle() {

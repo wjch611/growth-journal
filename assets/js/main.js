@@ -35,36 +35,26 @@ const fixUrl = (url) => {
 
 // ========== 归一化路径函数：支持 ../ ./ / absolute 和在 file:// 下的回退 ==========
 function normalizePath(basePath, relativePath) {
-  // basePath: already an absolute-ish path beginning with '/' or '' (may include BASE_PATH)
-  // relativePath: raw src from markdown
   try {
-    // 使用 URL 能正确处理 ../ 和 ./ 等
-    // 需要一个完整 base URL（含 origin）供 URL API 使用
     const origin = window.location.origin && window.location.origin !== 'null'
       ? window.location.origin
       : (window.location.protocol === 'file:' ? 'file:///' + (window.location.pathname || '') : window.location.origin);
 
-    // 确保 baseCandidate 以 / 结尾（表示目录）
     let baseCandidate = basePath;
     if (!baseCandidate.startsWith('/')) baseCandidate = '/' + baseCandidate;
     if (!baseCandidate.endsWith('/')) baseCandidate = baseCandidate + '/';
 
     const baseForUrl = origin + baseCandidate;
     const u = new URL(relativePath, baseForUrl);
-    // 返回规范化的 pathname（包含 BASE_PATH，如果 basePath 中含有 BASE_PATH 就在里面）
-    // 若 origin 是 file:/// 则 u.pathname 为本地绝对路径形式，保留其 pathname
     return u.pathname + (u.search || '') + (u.hash || '');
   } catch (e) {
-    // 回退到手动解析（处理 ../ ./ 等）
     const baseParts = (basePath || '').split('/').filter(Boolean);
     const relParts = (relativePath || '').split('/');
     const stack = baseParts.slice();
-    // 如果 basePath 指向文件（没有尾斜杠），我们假定 basePath 是目录（上层调用传入时请保证）
     relParts.forEach(part => {
       if (part === '..') {
         if (stack.length) stack.pop();
       } else if (part === '.') {
-        // skip
       } else if (part) {
         stack.push(part);
       }
@@ -110,6 +100,10 @@ let searchContainer = null;
 let searchInput = null;
 let searchToggleBtn = null;
 
+// 记录上一次阅读的文章路径（用于从搜索结果返回）
+let lastViewedArticleUrl = null;
+let lastViewedArticleIndex = -1;
+
 // ========== 自动加载 highlight.js ==========
 (function loadHighlightJS() {
   if (!window.hljs) {
@@ -125,16 +119,119 @@ let searchToggleBtn = null;
   }
 })();
 
-// ========== 搜索框初始化 ==========
+// ========== 搜索框初始化（美化版） ==========
 function initSearchBox() {
   if (document.getElementById('search-toggle-btn')) return;
 
+  // 注入搜索框专属样式（玻璃感 + 呼吸 + 聚焦发光 + 涟漪）
+  const style = document.createElement('style');
+  style.id = 'search-box-style';
+  style.innerHTML = `
+    #search-toggle-btn {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(40,40,80,0.75), rgba(20,20,50,0.75));
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(167,139,250,0.35);
+      color: #a78bfa;
+      font-size: 1.4rem;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 0 rgba(167,139,250,0.3);
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 10001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    #search-toggle-btn:hover {
+      transform: scale(1.12) translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 20px rgba(167,139,250,0.6);
+      color: #ffffff;
+      animation: pulse-ring 2s infinite;
+    }
+
+    #search-toggle-btn:active {
+      transform: scale(0.94);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(167,139,250,0.4); }
+      70% { box-shadow: 0 0 0 12px rgba(167,139,250,0); }
+      100% { box-shadow: 0 0 0 0 rgba(167,139,250,0); }
+    }
+
+    #diary-search-container {
+      position: fixed;
+      top: 78px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px) scale(0.95);
+      opacity: 0;
+      visibility: hidden;
+      z-index: 10002;
+      width: 100%;
+      max-width: 460px;
+      padding: 0 1.5rem;
+      transition: all 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    #diary-search-container.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+
+    #diary-search-input {
+      width: 100%;
+      padding: 1rem 1.4rem;
+      font-size: 1.08rem;
+      border: 1px solid rgba(167,139,250,0.35);
+      border-radius: 16px;
+      background: rgba(15,15,45,0.88);
+      backdrop-filter: blur(16px);
+      color: #e0e0ff;
+      outline: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      transition: all 0.3s ease;
+    }
+
+    #diary-search-input:focus {
+      border-color: #a78bfa;
+      box-shadow: 0 0 0 4px rgba(167,139,250,0.25);
+      background: rgba(20,20,50,0.92);
+      color: #ffffff;
+    }
+
+    #diary-search-input::placeholder {
+      color: rgba(224,224,255,0.5);
+      transition: opacity 0.3s ease;
+    }
+
+    #diary-search-input:focus::placeholder {
+      opacity: 0.3;
+    }
+
+    /* 输入中轻微发光 */
+    #diary-search-input:not(:placeholder-shown) {
+      box-shadow: 0 0 20px rgba(167,139,250,0.2);
+    }
+  `;
+  document.head.appendChild(style);
+
+  // 创建搜索触发按钮
   searchToggleBtn = document.createElement('button');
   searchToggleBtn.id = 'search-toggle-btn';
   searchToggleBtn.innerHTML = '🔍';
   searchToggleBtn.title = '搜索日记';
   document.body.appendChild(searchToggleBtn);
 
+  // 创建搜索容器
   searchContainer = document.createElement('div');
   searchContainer.id = 'diary-search-container';
   searchContainer.innerHTML = `
@@ -149,6 +246,19 @@ function initSearchBox() {
     const shouldShow = show !== null ? show : !isVisible;
 
     if (shouldShow) {
+      // 进入搜索前，记录当前文章状态
+      if (!currentSearchKeyword) {
+        // 如果当前不是搜索结果页，记录当前页面（文章或列表）
+        const currentState = history.state;
+        if (currentState && currentState.type === 'md') {
+          lastViewedArticleUrl = currentState.url;
+          lastViewedArticleIndex = currentState.index ?? -1;
+        } else {
+          lastViewedArticleUrl = null;
+          lastViewedArticleIndex = -1;
+        }
+      }
+
       searchContainer.classList.add('show');
       setTimeout(() => {
         searchInput.focus();
@@ -159,6 +269,18 @@ function initSearchBox() {
       }, 300);
     } else {
       searchContainer.classList.remove('show');
+      searchInput.blur(); // 收起时失焦
+
+      // 退出搜索时，优先恢复上次阅读的文章
+      if (lastViewedArticleUrl) {
+        loadMarkdown(lastViewedArticleUrl, lastViewedArticleIndex);
+        lastViewedArticleUrl = null;  // 清空记录，避免重复使用
+        lastViewedArticleIndex = -1;
+      } else {
+        // 如果没有上次文章记录，则回到列表
+        currentSearchKeyword = '';
+        loadAllEntries();
+      }
     }
   }
 
@@ -214,10 +336,8 @@ function loadMarkdown(url, currentIndex = -1) {
     .then(md => {
       const html = marked.parse(md);
 
-      // 将解析后的 HTML 包装（不直接修改原 html 字符串中的 src）
       let finalHtml = `<div class="markdown-content">${html}</div>`;
 
-      // 导航逻辑
       if (currentIndex >= 0 && allEntries.length > 1) {
         finalHtml += '<div class="article-nav" style="margin-top:3rem; padding-top:2rem; border-top:1px solid rgba(120,140,255,0.25); text-align:center; font-size:1.1rem;">';
         if (currentIndex > 0) {
@@ -236,8 +356,6 @@ function loadMarkdown(url, currentIndex = -1) {
 
       contentEl.innerHTML = finalHtml;
 
-      // === 图片自适应与路径处理 ===
-      // 计算 markdown 基础目录（fetchUrl 已经是带 BASE_PATH 的相对路径）
       const mdBase = (() => {
         try {
           const p = fetchUrl.split('?')[0].split('#')[0];
@@ -253,20 +371,15 @@ function loadMarkdown(url, currentIndex = -1) {
         const rawSrc = img.getAttribute('src') || '';
         let resolved = rawSrc;
 
-        // 若是绝对 http/data/blob，则保持
         if (!/^(\w+:)?\/\//.test(rawSrc) && !rawSrc.startsWith('data:') && !rawSrc.startsWith('blob:')) {
           if (rawSrc.startsWith('/')) {
-            // 根路径：在 GitHub Pages 下需要 BASE_PATH 前缀
             resolved = (BASE_PATH + rawSrc.replace(/^\//, '')).replace(/\/\/+/g, '/');
           } else {
-            // 相对路径：基于当前 markdown 文件目录（mdBase），并规范化 ../ 等
             resolved = normalizePath(mdBase, rawSrc);
-            // normalizePath 返回 pathname（例如 /growth-journal/assets/img/1.jpg）或本地 file 路径，确保去重重复斜杠
             resolved = resolved.replace(/\/\/+/g, '/');
           }
         }
 
-        // 最终设置 src（保留浏览器默认解析，以便本地 file:// 或 dev server 也能工作）
         img.src = resolved;
         img.style.maxWidth = '100%';
         img.style.height = 'auto';
@@ -276,11 +389,9 @@ function loadMarkdown(url, currentIndex = -1) {
         img.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
       });
 
-      // 代码块处理（创建 wrapper，复制按钮，折叠/遮罩）
       contentEl.querySelectorAll('.markdown-content pre > code').forEach(code => {
         const pre = code.parentElement;
 
-        // 创建 wrapper 包裹层
         const wrapper = document.createElement('div');
         wrapper.className = 'code-wrapper';
         wrapper.style.position = 'relative';
@@ -293,7 +404,6 @@ function loadMarkdown(url, currentIndex = -1) {
         pre.parentNode.insertBefore(wrapper, pre);
         wrapper.appendChild(pre);
 
-        // pre 样式微调（背景由 wrapper 提供）
         pre.style.overflowX = 'auto';
         pre.style.margin = '0';
         pre.style.padding = '2.5rem 1rem 1rem 1rem';
@@ -312,7 +422,6 @@ function loadMarkdown(url, currentIndex = -1) {
           try { hljs.highlightElement(code); } catch (e) { /* ignore */ }
         }
 
-        // 复制按钮（挂在 wrapper，不随横向滚动）
         const copyBtn = document.createElement('button');
         copyBtn.innerText = '复制';
         copyBtn.type = 'button';
@@ -341,8 +450,7 @@ function loadMarkdown(url, currentIndex = -1) {
         });
         wrapper.appendChild(copyBtn);
 
-        // 长代码折叠与遮罩
-        const MAX_HEIGHT = 400; // px，可调
+        const MAX_HEIGHT = 400;
         const mask = document.createElement('div');
         mask.className = 'code-mask';
         mask.style.position = 'absolute';
@@ -351,7 +459,7 @@ function loadMarkdown(url, currentIndex = -1) {
         mask.style.width = '100%';
         mask.style.height = '88px';
         mask.style.background = `linear-gradient(to bottom, transparent, rgba(30, 30, 47, ${currentOpacity}))`;
-        mask.style.pointerEvents = 'none'; // 让滚动/选中穿透
+        mask.style.pointerEvents = 'none';
         mask.style.transition = 'opacity 0.2s ease';
         mask.style.zIndex = '8';
 
@@ -371,11 +479,10 @@ function loadMarkdown(url, currentIndex = -1) {
         toggleBtn.style.zIndex = '12';
         toggleBtn.style.display = 'none';
 
-        // 等待一帧以便正确测量高度
         requestAnimationFrame(() => {
           if (pre.scrollHeight > MAX_HEIGHT + 6) {
             pre.style.maxHeight = `${MAX_HEIGHT}px`;
-            pre.style.overflowY = 'auto'; // 关键：折叠时仍允许垂直滚动查看
+            pre.style.overflowY = 'auto';
             pre.style.webkitOverflowScrolling = 'touch';
             wrapper.appendChild(mask);
             toggleBtn.style.display = 'inline-block';
@@ -389,7 +496,6 @@ function loadMarkdown(url, currentIndex = -1) {
           }
         });
 
-        // 折叠/展开逻辑（保留垂直滚动）
         let isExpanded = false;
         toggleBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -412,13 +518,11 @@ function loadMarkdown(url, currentIndex = -1) {
         });
       });
 
-      // 页面标题与导航状态更新
       const h1 = contentEl.querySelector('h1');
       document.title = h1 ? h1.textContent.trim() + ' | 我的成长日记' : '我的成长日记';
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
       history.pushState({ type: 'md', url: fetchUrl, index: currentIndex }, '', fetchUrl);
 
-      // 绑定文章底部导航链接
       contentEl.querySelectorAll('[data-entry-link]').forEach(link => {
         link.addEventListener('click', e => {
           e.preventDefault();
@@ -431,7 +535,6 @@ function loadMarkdown(url, currentIndex = -1) {
         });
       });
 
-      // 绑定退出按钮
       const exitBtn = document.getElementById('exit-article-btn');
       if (exitBtn) {
         exitBtn.addEventListener('click', () => {
@@ -453,7 +556,6 @@ function updateContentOpacity(val) {
   document.documentElement.style.setProperty('--content-bg-opacity', fixed);
   if (fixed <= 0.01) contentEl.setAttribute('data-opacity', '0'); else contentEl.removeAttribute('data-opacity');
 
-  // 同步更新 code-wrapper 背景 & 遮罩
   contentEl.querySelectorAll('.code-wrapper').forEach(wrapper => {
     wrapper.style.backgroundColor = `rgba(30, 30, 47, ${fixed})`;
   });
@@ -616,7 +718,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadMarkdown('about.md');
   }
 
-  // 内容透明度 slider
   const opacitySlider = document.getElementById('ctrl-content-opacity');
   const opacityValueSpan = document.getElementById('val-content-opacity');
   if (opacitySlider && opacityValueSpan) {
@@ -624,7 +725,6 @@ document.addEventListener('DOMContentLoaded', () => {
     opacitySlider.addEventListener('input', (e) => updateContentOpacity(e.target.value));
   }
 
-  // 引用轮播
   const quotes = [
     { text: "我们都是星星的孩子。"},
     { text: "我们来自星辰，也将奔赴星辰。"},

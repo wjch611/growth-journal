@@ -17,8 +17,8 @@ if (sidebar && sidebarToggle) {
   const sidebarGap = 12;
   const sidebarWidth = 195 + 32;
 
-  const ADSORB_DISTANCE = 200;
-  const DETACH_DISTANCE = 200;
+  const ADSORB_DISTANCE = 300;
+  const DETACH_DISTANCE = 300;
 
   const toggleSidebar = () => {
 

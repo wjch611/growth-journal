@@ -6,6 +6,12 @@
     "preview": "我们来自星辰，也将奔赴星辰！..."
   },
   {
+    "filename": "2026-03-08.md",
+    "date": "2026-03-08",
+    "title": "2026年3月8日 · 周日",
+    "preview": "今天任务：  - [x] 卸载glances  - [x] ★★★☆☆,添加Prometheus+Grafana+Alertmanager飞书监控告警  - [ ] 完整从迁移开始再快速过一遍  - [ ] 编写迁移文档->github  - [ ] 编写高可用文档->github  - [ ] 项..."
+  },
+  {
     "filename": "2026-03-07.md",
     "date": "2026-03-07",
     "title": "2026年3月7日 · 周六",

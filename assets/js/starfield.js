@@ -9,22 +9,22 @@ let nebulae = [];
 
 // ──────────────── 可调节参数 ────────────────
 const CONFIG = {
-  starDirection: 1,
-  starSpeedAbs: 0.6,
-  horizontalDrift: 0.0,
-  verticalDrift: 0.0,
-  starCount: 1300,
-  meteorFrequency: 0.008,
-  meteorSpeedMin: 12,
-  meteorSpeedMax: 22,
-  meteorAngleMin: Math.PI / 4,
-  meteorAngleMax: Math.PI * 1.2,
-  maxZ: 2200,
+  starDirection: 1,              // 星星移动方向（1 = 向前/靠近，-1 = 向后/远离）
+  starSpeedAbs: 0.6,             // 星星基础移动速度（绝对值，越高越快）
+  horizontalDrift: 0.0,          // 星星整体水平漂移（正数向右，负数向左）
+  verticalDrift: 0.0,            // 星星整体垂直漂移（正数向下，负数向上）
+  starCount: 2000,               // 总星星数量（影响密度，建议 800~2500）
+  meteorFrequency: 0.008,        // 流星出现的概率（每帧概率，越高流星越频繁）
+  meteorSpeedMin: 12,            // 流星最小速度（像素/帧）
+  meteorSpeedMax: 22,            // 流星最大速度（像素/帧）
+  meteorAngleMin: Math.PI / 4,   // 流星出现角度范围 - 最小值（弧度，45°）
+  meteorAngleMax: Math.PI * 1.2, // 流星出现角度范围 - 最大值（弧度，约216°）
+  maxZ: 2200,                    // 星星 Z 轴最大深度（影响远近感，越大远星越多）
 
   // 星云相关
-  enableNebula: false,
-  nebulaCount: 6,
-  nebulaSpeed: 0.08
+  enableNebula: true,            // 是否启用星云效果（true=开启，false=关闭）——已改为默认开启
+  nebulaCount: 8,                // 同时存在的星云数量（建议 3~10）
+  nebulaSpeed: 0.08              // 星云整体漂移速度（越小越慢，越梦幻）
 };
 
 // ──────────────── 初始化画布 ────────────────
@@ -339,6 +339,13 @@ if (s_nebula) {
       nebulae = [];
     }
   };
+
+  // 关键：页面加载时默认开启星云，并初始化星云
+  s_nebula.checked = true;
+  CONFIG.enableNebula = true;
+  if (v_nebula) v_nebula.textContent = '已启用';
+  if (nebulaRefreshGroup) nebulaRefreshGroup.style.display = 'block';
+  createNebulae();  // 立即创建星云
 }
 
 if (btnRefreshNebula) {

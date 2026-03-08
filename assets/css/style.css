@@ -998,3 +998,16 @@ body {
 
 /* 可选（如果存在按钮内部文本/字符，隐藏它） */
 #sidebar-toggle-btn { color: transparent !important; font-size: 0 !important; line-height: 0 !important; }
+
+
+/* 全站楷体 + 优先使用霞鹜文楷 */
+*,
+*::before,
+*::after {
+  font-family: "LXGW WenKai", "KaiTi", "楷体", "STKaiti", "SimKai", "Kaiti SC", "Microsoft YaHei", system-ui, sans-serif !important;
+}
+
+/* 代码块保持等宽字体（避免楷体影响代码可读性） */
+pre, code, .code-wrapper, .code-wrapper * {
+  font-family: "Fira Code", "Consolas", "Courier New", monospace !important;
+}

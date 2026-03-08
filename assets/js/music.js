@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const navBall=document.getElementById('sidebar-toggle-btn');
   const musicBall=document.getElementById('music-toggle-btn');
   const connectionSVG=document.getElementById('magnet-connection');
-  const TRIGGER_DISTANCE=220, MAX_GLOW_DISTANCE=140, MERGE_DISTANCE=40;
+  const TRIGGER_DISTANCE=300, MAX_GLOW_DISTANCE=140, MERGE_DISTANCE=40;
   let haloAnimating=false, audioCtx, analyser, dataArray;
 
   function getCenter(e){const r=e.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2};}
@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       } else{
         const lineOpacity=normalized*0.9;
-        const lineWidth=2+normalized*8;
+        const lineWidth=2+normalized*16;
         connectionSVG.innerHTML=`
           <defs>
             <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">

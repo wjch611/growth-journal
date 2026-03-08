@@ -1,4 +1,4 @@
-// starfield.js - 完整优化版：更真实梦幻星云 + 刷新按钮 + 星星动态频率跳动（每颗幅度不同） + 新增总星星数量调节
+// starfield.js - 完整优化版：更真实梦幻星云 + 刷新按钮 + 星星动态频率跳动（每颗幅度不同） + 新增总星星数量调节 + 真实星星颜色分布
 const canvas = document.getElementById('starfield');
 const ctx = canvas.getContext('2d');
 
@@ -27,6 +27,23 @@ const CONFIG = {
   nebulaSpeed: 0.08              // 星云整体漂移速度（越小越慢，越梦幻）
 };
 
+// 真实星星颜色分布（基于天文观测频率近似）
+const STAR_COLORS = [
+  { color: [255, 255, 255],   weight: 0.55 },   // 白（最常见）
+  { color: [255, 245, 220],   weight: 0.25 },   // 黄白
+  { color: [255, 230, 180],   weight: 0.12 },   // 浅黄
+  { color: [255, 200, 120],   weight: 0.05 },   // 橙黄
+  { color: [255, 160,  80],   weight: 0.02 },   // 橙
+  { color: [255, 100,  60],   weight: 0.008 },  // 浅红
+  { color: [220,  60,  40],   weight: 0.003 }   // 明显红（稀有但醒目）
+];
+
+// 累积权重，用于随机选择颜色
+const colorWeights = STAR_COLORS.reduce((acc, curr) => {
+  acc.push((acc[acc.length - 1] || 0) + curr.weight);
+  return acc;
+}, []);
+
 // ──────────────── 初始化画布 ────────────────
 function resize() {
   width = canvas.width = window.innerWidth;
@@ -41,6 +58,18 @@ function createStars() {
   stars = [];
   for (let i = 0; i < CONFIG.starCount; i++) {
     const baseFreq = 0.2 + Math.random() * 3.8;
+
+    // 根据权重随机选择星星颜色
+    const rand = Math.random();
+    let colorIndex = 0;
+    for (let j = 0; j < colorWeights.length; j++) {
+      if (rand <= colorWeights[j]) {
+        colorIndex = j;
+        break;
+      }
+    }
+    const baseColor = STAR_COLORS[colorIndex].color;
+
     stars.push({
       x: Math.random() * width,
       y: Math.random() * height,
@@ -49,9 +78,10 @@ function createStars() {
       brightness: Math.random() * 0.65 + 0.35,
       phase: Math.random() * Math.PI * 2,
       freq: baseFreq,
-      baseFreq: baseFreq,       // 原始频率
-      freqAmplitude: 0.3 + Math.random() * 0.5, // 动态频率波动幅度，每颗不同
-      twinkle: Math.random() > 0.68
+      baseFreq: baseFreq,
+      freqAmplitude: 0.3 + Math.random() * 0.5,
+      twinkle: Math.random() > 0.68,
+      baseColor: baseColor  // 保存基础颜色 [r,g,b]
     });
   }
 }
@@ -142,8 +172,8 @@ function drawNebula(n) {
   ctx.globalAlpha = 1;
 }
 
-// ──────────────── 绘制十字光晕 ────────────────
-function drawCrossFlare(sx, sy, size, brightness, z) {
+// ──────────────── 绘制十字光晕（使用星星自身颜色） ────────────────
+function drawCrossFlare(sx, sy, size, brightness, z, baseColor) {
   if (z < 650 || size > 0.9) return;
 
   const flareLength = size * (3.8 + Math.random() * 3.2);
@@ -155,41 +185,48 @@ function drawCrossFlare(sx, sy, size, brightness, z) {
   ctx.translate(sx, sy);
   ctx.rotate(angleOffset);
 
+  // 使用星星基础颜色生成光晕
+  const [r, g, b] = baseColor;
+  const flareColor = `rgba(${r}, ${g}, ${b}, ${flareOpacity * 0.9})`;
+
   ctx.beginPath();
   ctx.moveTo(-flareLength, 0);
   ctx.lineTo(flareLength, 0);
   ctx.lineWidth = size * 0.45 + Math.random() * 0.25;
-  ctx.strokeStyle = `rgba(235, 245, 255, ${flareOpacity * 0.9})`;
+  ctx.strokeStyle = flareColor;
   ctx.stroke();
 
   ctx.beginPath();
   ctx.moveTo(0, -flareLength);
   ctx.lineTo(0, flareLength);
   ctx.lineWidth = size * 0.45 + Math.random() * 0.25;
-  ctx.strokeStyle = `rgba(235, 245, 255, ${flareOpacity * 0.9})`;
+  ctx.strokeStyle = flareColor;
   ctx.stroke();
 
   ctx.restore();
 }
 
-// ──────────────── 绘制星星（动态频率） ────────────────
+// ──────────────── 绘制星星（动态频率 + 真实颜色） ────────────────
 function drawStar(sx, sy, size, brightness, twinkle, z, freq, phase, starObj) {
+  const [r, g, b] = starObj.baseColor;
+
+  // 主星体 - 使用自身颜色
   ctx.beginPath();
   ctx.arc(sx, sy, size, 0, Math.PI * 2);
-  ctx.fillStyle = `rgba(240, 250, 255, ${brightness})`;
+  ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${brightness})`;
   ctx.fill();
 
-  drawCrossFlare(sx, sy, size, brightness, z);
+  drawCrossFlare(sx, sy, size, brightness, z, starObj.baseColor);
 
   if (twinkle) {
-    // 动态频率：freq = baseFreq * (1 + sin(...)*幅度)
     const dynamicFreq = starObj.baseFreq * (1 + Math.sin(Date.now() * 0.05 + starObj.phase) * starObj.freqAmplitude);
     const pulse = Math.sin(Date.now() * 0.002 * dynamicFreq + phase) * 0.4 + 0.6;
 
     ctx.globalAlpha = pulse;
     ctx.beginPath();
     ctx.arc(sx, sy, size * 1.35, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 255, 230, ${brightness * 0.45})`;
+    // 光晕颜色稍偏白，但仍带主色调
+    ctx.fillStyle = `rgba(${Math.min(255, r+40)}, ${Math.min(255, g+40)}, ${Math.min(255, b+40)}, ${brightness * 0.45})`;
     ctx.fill();
     ctx.globalAlpha = 1;
   }
@@ -354,18 +391,17 @@ if (btnRefreshNebula) {
   };
 }
 
-// ──────────────── 新增：总星星数量调节 ────────────────
+// ──────────────── 总星星数量调节 ────────────────
 const s_starcount = document.getElementById('ctrl-starcount');
 const v_starcount = document.getElementById('val-starcount');
 if (s_starcount && v_starcount) {
-  // 初始化滑块显示当前值
   s_starcount.value = CONFIG.starCount;
   v_starcount.textContent = CONFIG.starCount;
 
   s_starcount.oninput = () => {
     CONFIG.starCount = parseInt(s_starcount.value, 10);
     v_starcount.textContent = CONFIG.starCount;
-    createStars();  // 实时重新生成星星
+    createStars();  // 实时重新生成星星（颜色也会重新随机分配）
   };
 }
 

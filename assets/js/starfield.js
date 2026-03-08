@@ -1,4 +1,4 @@
-// starfield.js - 完整优化版：更真实梦幻星云 + 刷新按钮 + 星星动态频率跳动（每颗幅度不同）
+// starfield.js - 完整优化版：更真实梦幻星云 + 刷新按钮 + 星星动态频率跳动（每颗幅度不同） + 新增总星星数量调节
 const canvas = document.getElementById('starfield');
 const ctx = canvas.getContext('2d');
 
@@ -340,17 +340,32 @@ if (s_nebula) {
     }
   };
 
-  // 关键：页面加载时默认开启星云，并初始化星云
+  // 页面加载时默认开启星云，并初始化
   s_nebula.checked = true;
   CONFIG.enableNebula = true;
   if (v_nebula) v_nebula.textContent = '已启用';
   if (nebulaRefreshGroup) nebulaRefreshGroup.style.display = 'block';
-  createNebulae();  // 立即创建星云
+  createNebulae();
 }
 
 if (btnRefreshNebula) {
   btnRefreshNebula.onclick = () => {
     createNebulae();
+  };
+}
+
+// ──────────────── 新增：总星星数量调节 ────────────────
+const s_starcount = document.getElementById('ctrl-starcount');
+const v_starcount = document.getElementById('val-starcount');
+if (s_starcount && v_starcount) {
+  // 初始化滑块显示当前值
+  s_starcount.value = CONFIG.starCount;
+  v_starcount.textContent = CONFIG.starCount;
+
+  s_starcount.oninput = () => {
+    CONFIG.starCount = parseInt(s_starcount.value, 10);
+    v_starcount.textContent = CONFIG.starCount;
+    createStars();  // 实时重新生成星星
   };
 }
 

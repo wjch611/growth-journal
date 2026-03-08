@@ -6,10 +6,6 @@
   <title>我的成长日记</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.1.0/style.css">
-
-  <!-- 强制初始完全透明，防止首次加载闪现（FOUC 解决方案） -->
-  <!-- 强制首次加载完全透明，防止闪现（FOUC 解决方案） -->
-  <!-- 强制首次加载完全透明，防止闪现 -->
 </head>
 <body>
   <!-- 全屏动态星空背景 - 固定不动 -->
@@ -84,60 +80,64 @@
     </div>
   </nav>
 
-  <!-- 星空调节触发按钮（右上角，默认显示） -->
+  <!-- 星空调节触发按钮（右上角，默认显示） - 完全保留原有样式和效果 -->
   <button id="starfield-toggle-btn" title="调节星空" aria-label="展开星空调节">
     <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
     </svg>
   </button>
 
-  <!-- 星空调节面板（完整版，不省略滑块） -->
+  <!-- 优化后的星空调节面板：更小巧、压缩布局（不改触发按钮和出现动画） -->
   <div id="starfield-controls">
     <div class="panel-header">
       <div>星空调节</div>
       <button id="starfield-close-btn">×</button>
     </div>
     <div class="slider-group">
-      <div>速度大小</div>
+      <div>速度</div>
       <input type="range" id="ctrl-starspeed-abs" min="0" max="2" step="0.05" value="0.6">
       <span id="val-starspeed-abs">0.6</span>
     </div>
     <div class="slider-group">
       <div>方向</div>
       <select id="ctrl-stardir">
-        <option value="1">向前（靠近）</option>
-        <option value="-1">向后（远离）</option>
+        <option value="1">向前</option>
+        <option value="-1">向后</option>
       </select>
       <span id="val-stardir">向前</span>
     </div>
     <div class="slider-group">
-      <div>左右漂移</div>
+      <div>水平漂移</div>
       <input type="range" id="ctrl-hdrift" min="-0.8" max="0.8" step="0.02" value="0">
       <span id="val-hdrift">0.0</span>
     </div>
     <div class="slider-group">
-      <div>上下漂移</div>
+      <div>垂直漂移</div>
       <input type="range" id="ctrl-vdrift" min="-0.8" max="0.8" step="0.02" value="0">
       <span id="val-vdrift">0.0</span>
     </div>
     <div class="slider-group">
-      <div>流星密度</div>
+      <div>流星</div>
       <input type="range" id="ctrl-meteorfreq" min="0" max="0.03" step="0.0005" value="0.006">
       <span id="val-meteorfreq">0.006</span>
     </div>
     <div class="slider-group">
-      <div>启用星云</div>
-      <input type="checkbox" id="ctrl-nebula">
-      <span id="val-nebula">已关闭</span>
+      <div>星星数</div>
+      <input type="range" id="ctrl-starcount" min="500" max="4000" step="100" value="2000">
+      <span id="val-starcount">2000</span>
     </div>
-    <!-- 新增：刷新星云按钮（默认隐藏） -->
-    <div class="slider-group" id="nebula-refresh-group" style="display: none;">
-      <button id="btn-refresh-nebula" style="width: 100%; padding: 8px; background: rgba(100, 80, 180, 0.4); border: 1px solid rgba(180, 140, 220, 0.5); color: white; border-radius: 6px; cursor: pointer;">
-      刷新星云
-      </button>
+    <div class="slider-group compact">
+      <div>星云</div>
+      <label style="display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="ctrl-nebula" checked>
+        <span id="val-nebula">启用</span>
+      </label>
+    </div>
+    <div id="nebula-refresh-group" style="margin-top:4px;">
+      <button id="btn-refresh-nebula">刷新星云</button>
     </div>
     <div class="slider-group">
-      <div>星空透出程度（越小文字越清晰）</div>
+      <div>透出度</div>
       <input type="range" id="ctrl-content-opacity" min="0" max="0.9" step="0.01" value="0">
       <span id="val-content-opacity">0</span>
     </div>
@@ -165,14 +165,13 @@
      style="position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9990; overflow: visible;">
   </svg>
 
-  <!-- 新增：动态注入星空控件美化样式（与搜索框风格一致） -->
+  <!-- 动态注入星空控件美化样式（保留原触发按钮特效，只压缩面板内部） -->
   <script>
-    // 只在 DOM 加载后注入一次，避免重复
     if (!document.getElementById('starfield-controls-style')) {
       const style = document.createElement('style');
       style.id = 'starfield-controls-style';
       style.innerHTML = `
-        /* 星空调节触发按钮 - 玻璃摩卡 + 呼吸光环 */
+        /* 保留原触发按钮所有样式和特效 */
         #starfield-toggle-btn {
           position: fixed;
           top: 16px;
@@ -213,7 +212,7 @@
           100% { box-shadow: 0 0 0 0 rgba(167,139,250,0); }
         }
 
-        /* 星空调节面板 - 玻璃感 + 出现动画优化 */
+        /* 面板主体 - 压缩尺寸，保持玻璃感、动画、阴影等原有特效 */
         #starfield-controls {
           position: fixed;
           top: 70px;
@@ -222,12 +221,11 @@
           backdrop-filter: blur(16px);
           border: 1px solid rgba(167,139,250,0.35);
           border-radius: 16px;
-          padding: 16px 20px;
+          padding: 12px 14px;
           color: #d0e0ff;
-          font-size: 13px;
+          font-size: 12.5px;
           z-index: 9999;
-          min-width: 240px;
-          max-width: 300px;
+          width: 220px;
           box-shadow: 0 12px 40px rgba(0,0,0,0.6), inset 0 0 20px rgba(167,139,250,0.1);
           opacity: 0;
           transform: translateY(-20px) scale(0.95);
@@ -243,15 +241,14 @@
           pointer-events: auto !important;
         }
 
-        /* 面板头部美化 */
         .panel-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
           font-weight: 600;
           color: #a78bfa;
-          font-size: 1.1rem;
+          font-size: 13.5px;
         }
 
         #starfield-close-btn {
@@ -270,10 +267,9 @@
           color: #ffffff;
         }
 
-        /* 滑块组 - 轻微hover效果 */
         .slider-group {
-          margin: 12px 0;
-          padding: 8px 12px;
+          margin: 8px 0;
+          padding: 6px 8px;
           border-radius: 10px;
           transition: background 0.25s ease;
         }
@@ -283,13 +279,19 @@
         }
 
         .slider-group div {
-          margin-bottom: 6px;
-          font-size: 13px;
+          margin-bottom: 4px;
+          font-size: 12.5px;
           opacity: 0.9;
-          color: #d0e0ff;
         }
 
-        /* 输入滑块美化（与主题统一） */
+        .slider-group.compact {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 4px 8px;
+          margin: 4px 0;
+        }
+
         .slider-group input[type="range"] {
           width: 100%;
           height: 6px;
@@ -317,25 +319,32 @@
           box-shadow: 0 0 15px rgba(167,139,250,0.8);
         }
 
-        /* 复选框和按钮美化（与整体一致） */
-        .slider-group input[type="checkbox"] {
-          accent-color: #a78bfa;
+        .slider-group select {
+          background: rgba(30,30,60,0.85);
+          color: #d0e0ff;
+          border: 1px solid rgba(167,139,250,0.3);
+          border-radius: 6px;
+          padding: 3px 6px;
+          font-size: 12px;
         }
 
         #btn-refresh-nebula {
-          background: linear-gradient(135deg, rgba(167,139,250,0.25), rgba(100,80,180,0.25)) !important;
-          border: 1px solid rgba(167,139,250,0.4) !important;
+          width: 100%;
+          padding: 6px;
+          margin-top: 4px;
+          background: linear-gradient(135deg, rgba(167,139,250,0.25), rgba(100,80,180,0.25));
+          border: 1px solid rgba(167,139,250,0.4);
+          color: #d0e0ff;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 12px;
           transition: all 0.3s ease;
         }
 
         #btn-refresh-nebula:hover {
-          background: linear-gradient(135deg, rgba(167,139,250,0.45), rgba(100,80,180,0.45)) !important;
+          background: linear-gradient(135deg, rgba(167,139,250,0.45), rgba(100,80,180,0.45));
           transform: translateY(-1px);
           box-shadow: 0 4px 12px rgba(167,139,250,0.3);
-        }
-
-        #btn-refresh-nebula:active {
-          transform: translateY(0);
         }
       `;
       document.head.appendChild(style);

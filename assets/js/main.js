@@ -10,11 +10,21 @@ const getBasePath = () => {
 };
 const BASE_PATH = getBasePath();
 
+
 const fixUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('http') || url.startsWith('blob') || url.startsWith('data:')) return url;
-  const cleanUrl = url.replace(/^\//, '');
-  return (BASE_PATH.endsWith('/') ? BASE_PATH : BASE_PATH) + cleanUrl;
+
+  // 移除开头的 /，得到相对路径
+  let cleanUrl = url.replace(/^\//, '');
+
+  // 如果 cleanUrl 已经以仓库名开头（常见于 GitHub Pages 相对链接被浏览器解析后），则不重复添加 BASE_PATH
+  if (BASE_PATH !== '/' && cleanUrl.startsWith(BASE_PATH.replace(/^\//, '').replace(/\/$/, ''))) {
+    return '/' + cleanUrl;  // 直接返回浏览器已解析的路径（已带仓库名）
+  }
+
+  // 正常情况：拼接 BASE_PATH
+  return BASE_PATH + cleanUrl;
 };
 
 // ========== 注入滚动条透明样式（WebKit + Firefox） ==========

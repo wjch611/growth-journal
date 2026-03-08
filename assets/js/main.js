@@ -10,35 +10,36 @@ const getBasePath = () => {
 };
 const BASE_PATH = getBasePath();
 
-
+// 彻底防重复拼接的 fixUrl（核心修复）
 const fixUrl = (url) => {
   if (!url) return '';
 
-  // 已经是完整 URL，直接返回
+  // 已经是完整外部 URL，直接返回
   if (url.startsWith('http') || url.startsWith('blob') || url.startsWith('data:')) {
     return url;
   }
 
-  // 移除开头的斜杠，得到纯相对路径
-  let cleanUrl = url.replace(/^\//, '');
+  // 移除所有开头的斜杠，得到最干净的相对路径
+  let cleanPath = url.replace(/^\/+/, '');
 
-  // 如果 BASE_PATH 是 '/'（本地开发或根部署），直接返回 cleanUrl
+  // 如果 BASE_PATH 是根（本地或根部署），直接加 /
   if (BASE_PATH === '/' || BASE_PATH === '') {
-    return '/' + cleanUrl;
+    return '/' + cleanPath;
   }
 
   // 提取仓库名（去掉前后斜杠）
-  const repoName = BASE_PATH.replace(/^\//, '').replace(/\/$/, '');
+  const repoSlug = BASE_PATH.replace(/^\/+/, '').replace(/\/+$/, '');
 
-  // 如果 cleanUrl 已经以仓库名开头（GitHub Pages 常见情况），直接返回 / + cleanUrl（避免重复）
-  if (cleanUrl.startsWith(repoName + '/')) {
-    return '/' + cleanUrl;
+  // 关键：如果路径已经以仓库名开头（GitHub Pages 常见），移除重复的仓库名前缀
+  if (cleanPath.startsWith(repoSlug + '/')) {
+    cleanPath = cleanPath.substring(repoSlug.length + 1);
+  } else if (cleanPath === repoSlug) {
+    cleanPath = ''; // 刚好是仓库根
   }
 
-  // 正常情况：前面拼接 BASE_PATH
-  return BASE_PATH + cleanUrl;
+  // 最终拼接（现在 cleanPath 已去重）
+  return BASE_PATH + cleanPath;
 };
-
 
 // ========== 注入滚动条透明样式（WebKit + Firefox） ==========
 (function injectScrollbarStyle() {
@@ -271,7 +272,6 @@ function initSearchBox() {
     if (shouldShow) {
       // 进入搜索前，记录当前文章状态
       if (!currentSearchKeyword) {
-        // 如果当前不是搜索结果页，记录当前页面（文章或列表）
         const currentState = history.state;
         if (currentState && currentState.type === 'md') {
           lastViewedArticleUrl = currentState.url;
@@ -292,15 +292,13 @@ function initSearchBox() {
       }, 300);
     } else {
       searchContainer.classList.remove('show');
-      searchInput.blur(); // 收起时失焦
+      searchInput.blur();
 
-      // 退出搜索时，优先恢复上次阅读的文章
       if (lastViewedArticleUrl) {
         loadMarkdown(lastViewedArticleUrl, lastViewedArticleIndex);
-        lastViewedArticleUrl = null;  // 清空记录，避免重复使用
+        lastViewedArticleUrl = null;
         lastViewedArticleIndex = -1;
       } else {
-        // 如果没有上次文章记录，则回到列表
         currentSearchKeyword = '';
         loadAllEntries();
       }

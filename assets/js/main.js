@@ -14,33 +14,26 @@ const BASE_PATH = getBasePath();
 const fixUrl = (url) => {
   if (!url) return '';
 
-  // 已经是完整 URL，直接返回
   if (url.startsWith('http') || url.startsWith('blob') || url.startsWith('data:')) {
     return url;
   }
 
-  // 统一处理：先把 url 转成相对路径（去掉开头的 /）
   let path = url.replace(/^\/+/, '');
 
-  // 如果 BASE_PATH 是根，直接返回
   if (BASE_PATH === '/' || BASE_PATH === '') {
     return '/' + path;
   }
 
-  // 提取仓库名（去掉 /）
   const repo = BASE_PATH.replace(/^\/+/, '').replace(/\/+$/, '');
 
-  // 关键修复：如果 path 以 repo 开头（GitHub Pages 常见），移除这个前缀
   if (path.startsWith(repo + '/')) {
     path = path.substring(repo.length + 1);
   } else if (path === repo) {
     path = '';
   }
 
-  // 最终拼接（现在 path 已去重）
   const final = BASE_PATH + path;
 
-  // 额外清理：防止多余斜杠
   return final.replace(/\/+/g, '/');
 };
 
@@ -126,9 +119,8 @@ let searchContainer = null;
 let searchInput = null;
 let searchToggleBtn = null;
 
-// 记录上一次有效的文章路径（防止多次搜索后丢失）
-let lastViewedArticleUrl = null;
-let lastViewedArticleIndex = -1;
+// 记录搜索框出现前的页面
+let preSearchPage = { type: 'list', url: null, index: -1 };
 
 // ========== 自动加载 highlight.js ==========
 (function loadHighlightJS() {
@@ -268,11 +260,13 @@ function initSearchBox() {
     const shouldShow = show !== null ? show : !isVisible;
 
     if (shouldShow) {
-      // 打开搜索时，如果当前不是搜索结果，记录当前文章
-      if (!currentSearchKeyword && history.state?.type === 'md') {
-        lastViewedArticleUrl = history.state.url;
-        lastViewedArticleIndex = history.state.index ?? -1;
-      }
+      // 打开搜索前记录当前页面（每次打开都更新）
+      const currentState = history.state || {};
+      preSearchPage = {
+        type: currentState.type || 'list',
+        url: currentState.url || null,
+        index: currentState.index ?? -1
+      };
 
       searchContainer.classList.add('show');
       setTimeout(() => {
@@ -286,37 +280,40 @@ function initSearchBox() {
       searchContainer.classList.remove('show');
       searchInput.blur();
 
-      // 退出搜索：优先恢复上次记录的文章（即使多次搜索，只要有记录就恢复）
-      if (lastViewedArticleUrl) {
-        loadMarkdown(lastViewedArticleUrl, lastViewedArticleIndex);
-        // 注意：这里不清空 lastViewedArticleUrl，允许多次点击搜索后仍能返回同一文章
-        // 如果你希望每次退出都“消耗”一次记录，再打开搜索时重新记录，可以在这里清空：
-        // lastViewedArticleUrl = null;
-        // lastViewedArticleIndex = -1;
+      // 只有“真正取消”时才回 preSearchPage
+      if (preSearchPage.type === 'md' && preSearchPage.url) {
+        loadMarkdown(preSearchPage.url, preSearchPage.index);
       } else {
         currentSearchKeyword = '';
         loadAllEntries();
       }
+
+      searchInput.value = '';
+      currentSearchKeyword = '';
     }
   }
 
+  // 点击搜索按钮打开/关闭
   searchToggleBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleSearchBox();
   });
 
+  // 输入时实时搜索
   searchInput.addEventListener('input', (e) => {
     currentSearchKeyword = e.target.value.trim();
     currentPage = 1;
     loadAllEntries();
   });
 
+  // Esc 关闭搜索（视为取消）
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && searchContainer.classList.contains('show')) {
       toggleSearchBox(false);
     }
   });
 
+  // 点击空白处关闭搜索（视为取消）
   document.addEventListener('click', (e) => {
     if (searchContainer.classList.contains('show') &&
         !searchContainer.contains(e.target) &&
@@ -569,7 +566,15 @@ function loadMarkdown(url, currentIndex = -1) {
 function updateContentOpacity(val) {
   const fixed = Math.max(0, Math.min(1, parseFloat(val))) || 0;
   currentOpacity = fixed;
+
+  // 移除内联强制样式，让 CSS 变量生效
+  contentEl.style.background = '';
+  contentEl.style.backdropFilter = '';
+  contentEl.style.boxShadow = '';
+  contentEl.style.transition = 'all 0.3s ease';  // 恢复过渡
+
   document.documentElement.style.setProperty('--content-bg-opacity', fixed);
+
   if (fixed <= 0.01) contentEl.setAttribute('data-opacity', '0'); else contentEl.removeAttribute('data-opacity');
 
   contentEl.querySelectorAll('.code-wrapper').forEach(wrapper => {
@@ -636,8 +641,10 @@ function renderDiaryList(page = 1) {
 
   contentEl.innerHTML = html;
 
+  // 点击列表项时，阻止冒泡，避免触发文档的“点击空白关闭”事件
   contentEl.querySelectorAll('[data-entry-link]').forEach(link => {
     link.addEventListener('click', e => {
+      e.stopPropagation();  // ← 关键：阻止事件冒泡到 document，不触发关闭搜索
       e.preventDefault();
       const targetUrl = link.getAttribute('href');
       const targetIndex = allEntries.findIndex(item => {
@@ -645,6 +652,14 @@ function renderDiaryList(page = 1) {
         return `entries/${fname}` === targetUrl;
       });
       loadMarkdown(targetUrl, targetIndex);
+
+      // 点击文章后自动关闭搜索框（用户体验更好）
+      if (searchContainer.classList.contains('show')) {
+        searchContainer.classList.remove('show');
+        searchInput.blur();
+        searchInput.value = '';
+        currentSearchKeyword = '';
+      }
     });
   });
 
@@ -702,6 +717,15 @@ function loadAllEntries() {
 
 // ========== 初始化 ==========
 document.addEventListener('DOMContentLoaded', () => {
+  // 先强制设置初始透明度（在任何内容加载前）
+  const opacitySlider = document.getElementById('ctrl-content-opacity');
+  const opacityValueSpan = document.getElementById('val-content-opacity');
+  if (opacitySlider && opacityValueSpan) {
+    opacitySlider.value = '0';
+    opacityValueSpan.textContent = '0';
+    updateContentOpacity(0);
+  }
+
   initSearchBox();
 
   document.getElementById('all-diaries-link')?.addEventListener('click', e => {
@@ -734,10 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadMarkdown('about.md');
   }
 
-  const opacitySlider = document.getElementById('ctrl-content-opacity');
-  const opacityValueSpan = document.getElementById('val-content-opacity');
-  if (opacitySlider && opacityValueSpan) {
-    updateContentOpacity(opacitySlider.value);
+  if (opacitySlider) {
     opacitySlider.addEventListener('input', (e) => updateContentOpacity(e.target.value));
   }
 

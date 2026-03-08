@@ -10,34 +10,28 @@ const getBasePath = () => {
 };
 const BASE_PATH = getBasePath();
 
-// 彻底防重复拼接的 fixUrl（核心修复）
+// 彻底防重复拼接的 fixUrl
 const fixUrl = (url) => {
   if (!url) return '';
 
-  // 已经是完整外部 URL，直接返回
   if (url.startsWith('http') || url.startsWith('blob') || url.startsWith('data:')) {
     return url;
   }
 
-  // 移除所有开头的斜杠，得到最干净的相对路径
   let cleanPath = url.replace(/^\/+/, '');
 
-  // 如果 BASE_PATH 是根（本地或根部署），直接加 /
   if (BASE_PATH === '/' || BASE_PATH === '') {
     return '/' + cleanPath;
   }
 
-  // 提取仓库名（去掉前后斜杠）
   const repoSlug = BASE_PATH.replace(/^\/+/, '').replace(/\/+$/, '');
 
-  // 关键：如果路径已经以仓库名开头（GitHub Pages 常见），移除重复的仓库名前缀
   if (cleanPath.startsWith(repoSlug + '/')) {
     cleanPath = cleanPath.substring(repoSlug.length + 1);
   } else if (cleanPath === repoSlug) {
-    cleanPath = ''; // 刚好是仓库根
+    cleanPath = '';
   }
 
-  // 最终拼接（现在 cleanPath 已去重）
   return BASE_PATH + cleanPath;
 };
 
@@ -52,12 +46,11 @@ const fixUrl = (url) => {
 .code-wrapper pre::-webkit-scrollbar-thumb { background: rgba(0,0,0,0); border-radius: 8px; }
 /* Firefox */
 .code-wrapper pre { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0) rgba(0,0,0,0); }
-/* 若需要更显眼，可调整 rgba(0,0,0,0.12) 之类的值 */
 `;
   document.head.appendChild(style);
 })();
 
-// ========== 归一化路径函数：支持 ../ ./ / absolute 和在 file:// 下的回退 ==========
+// ========== 归一化路径函数 ==========
 function normalizePath(basePath, relativePath) {
   try {
     const origin = window.location.origin && window.location.origin !== 'null'
@@ -87,7 +80,7 @@ function normalizePath(basePath, relativePath) {
   }
 }
 
-// ========== 复制函数（兼容回退） ==========
+// ========== 复制函数 ==========
 function copyText(text) {
   if (navigator.clipboard && window.isSecureContext) {
     return navigator.clipboard.writeText(text);
@@ -112,7 +105,7 @@ function copyText(text) {
   });
 }
 
-// ========== 其余原有配置 ==========
+// ========== 配置 ==========
 const ITEMS_PER_PAGE = 3;
 let currentPage = 1;
 let currentSearchKeyword = '';
@@ -124,7 +117,7 @@ let searchContainer = null;
 let searchInput = null;
 let searchToggleBtn = null;
 
-// 记录上一次阅读的文章路径（用于从搜索结果返回）
+// 记录上一次有效的文章路径（防止多次搜索后丢失）
 let lastViewedArticleUrl = null;
 let lastViewedArticleIndex = -1;
 
@@ -138,16 +131,15 @@ let lastViewedArticleIndex = -1;
 
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js';
-    script.onload = () => { /* hljs 自动可用 */ };
+    script.onload = () => { };
     document.head.appendChild(script);
   }
 })();
 
-// ========== 搜索框初始化（美化版） ==========
+// ========== 搜索框初始化 ==========
 function initSearchBox() {
   if (document.getElementById('search-toggle-btn')) return;
 
-  // 注入搜索框专属样式（玻璃感 + 呼吸 + 聚焦发光 + 涟漪）
   const style = document.createElement('style');
   style.id = 'search-box-style';
   style.innerHTML = `
@@ -241,21 +233,18 @@ function initSearchBox() {
       opacity: 0.3;
     }
 
-    /* 输入中轻微发光 */
     #diary-search-input:not(:placeholder-shown) {
       box-shadow: 0 0 20px rgba(167,139,250,0.2);
     }
   `;
   document.head.appendChild(style);
 
-  // 创建搜索触发按钮
   searchToggleBtn = document.createElement('button');
   searchToggleBtn.id = 'search-toggle-btn';
   searchToggleBtn.innerHTML = '🔍';
   searchToggleBtn.title = '搜索日记';
   document.body.appendChild(searchToggleBtn);
 
-  // 创建搜索容器
   searchContainer = document.createElement('div');
   searchContainer.id = 'diary-search-container';
   searchContainer.innerHTML = `
@@ -270,16 +259,10 @@ function initSearchBox() {
     const shouldShow = show !== null ? show : !isVisible;
 
     if (shouldShow) {
-      // 进入搜索前，记录当前文章状态
-      if (!currentSearchKeyword) {
-        const currentState = history.state;
-        if (currentState && currentState.type === 'md') {
-          lastViewedArticleUrl = currentState.url;
-          lastViewedArticleIndex = currentState.index ?? -1;
-        } else {
-          lastViewedArticleUrl = null;
-          lastViewedArticleIndex = -1;
-        }
+      // 打开搜索时，如果当前不是搜索结果，记录当前文章
+      if (!currentSearchKeyword && history.state?.type === 'md') {
+        lastViewedArticleUrl = history.state.url;
+        lastViewedArticleIndex = history.state.index ?? -1;
       }
 
       searchContainer.classList.add('show');
@@ -294,10 +277,13 @@ function initSearchBox() {
       searchContainer.classList.remove('show');
       searchInput.blur();
 
+      // 退出搜索：优先恢复上次记录的文章（即使多次搜索，只要有记录就恢复）
       if (lastViewedArticleUrl) {
         loadMarkdown(lastViewedArticleUrl, lastViewedArticleIndex);
-        lastViewedArticleUrl = null;
-        lastViewedArticleIndex = -1;
+        // 注意：这里不清空 lastViewedArticleUrl，允许多次点击搜索后仍能返回同一文章
+        // 如果你希望每次退出都“消耗”一次记录，再打开搜索时重新记录，可以在这里清空：
+        // lastViewedArticleUrl = null;
+        // lastViewedArticleIndex = -1;
       } else {
         currentSearchKeyword = '';
         loadAllEntries();
@@ -440,7 +426,7 @@ function loadMarkdown(url, currentIndex = -1) {
         code.style.display = 'block';
 
         if (window.hljs && typeof hljs.highlightElement === 'function') {
-          try { hljs.highlightElement(code); } catch (e) { /* ignore */ }
+          try { hljs.highlightElement(code); } catch (e) { }
         }
 
         const copyBtn = document.createElement('button');

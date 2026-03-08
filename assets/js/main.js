@@ -765,8 +765,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const quotes = [
     { text: "我们都是星星的孩子。"},
     { text: "我们来自星辰，也将奔赴星辰。"},
-    { text: "我们都在阴沟里，但仍有人仰望星空。"},
-    { text: "每一个不曾起舞的日子，都是对生命的辜负。"}
+    { text: "先拯救自己，再拯救世界。"},
+
   ];
 
   let currentQuoteIndex = 0;

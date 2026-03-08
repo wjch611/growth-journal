@@ -1,4 +1,4 @@
-// starfield.js - 完整优化版：更真实梦幻星云 + 刷新按钮 + 星星动态频率跳动（每颗幅度不同） + 新增总星星数量调节 + 真实星星颜色分布
+// starfield.js - 完整优化版：更真实梦幻星云 + 刷新按钮 + 星星动态频率跳动（每颗幅度不同） + 新增总星星数量调节 + 真实星星颜色分布（最新比例）
 const canvas = document.getElementById('starfield');
 const ctx = canvas.getContext('2d');
 
@@ -27,15 +27,14 @@ const CONFIG = {
   nebulaSpeed: 0.08              // 星云整体漂移速度（越小越慢，越梦幻）
 };
 
-// 真实星星颜色分布（基于天文观测频率近似）
+// 真实星星颜色分布（按你指定的最新比例）
 const STAR_COLORS = [
-  { color: [255, 255, 255],   weight: 0.55 },   // 白（最常见）
-  { color: [255, 245, 220],   weight: 0.25 },   // 黄白
-  { color: [255, 230, 180],   weight: 0.12 },   // 浅黄
-  { color: [255, 200, 120],   weight: 0.05 },   // 橙黄
-  { color: [255, 160,  80],   weight: 0.02 },   // 橙
-  { color: [255, 100,  60],   weight: 0.008 },  // 浅红
-  { color: [220,  60,  40],   weight: 0.003 }   // 明显红（稀有但醒目）
+  { color: [245, 245, 255],   weight: 0.55 },   // 白色 / 蓝白（最常见，略带冷调）
+  { color: [255, 245, 220],   weight: 0.22 },   // 黄白
+  { color: [255, 235, 180],   weight: 0.10 },   // 黄色
+  { color: [255, 200, 120],   weight: 0.07 },   // 橙色
+  { color: [255, 160,  90],   weight: 0.04 },   // 橙红
+  { color: [220,  80,  60],   weight: 0.02 }    // 红色（少但醒目）
 ];
 
 // 累积权重，用于随机选择颜色
@@ -185,7 +184,6 @@ function drawCrossFlare(sx, sy, size, brightness, z, baseColor) {
   ctx.translate(sx, sy);
   ctx.rotate(angleOffset);
 
-  // 使用星星基础颜色生成光晕
   const [r, g, b] = baseColor;
   const flareColor = `rgba(${r}, ${g}, ${b}, ${flareOpacity * 0.9})`;
 
@@ -210,7 +208,6 @@ function drawCrossFlare(sx, sy, size, brightness, z, baseColor) {
 function drawStar(sx, sy, size, brightness, twinkle, z, freq, phase, starObj) {
   const [r, g, b] = starObj.baseColor;
 
-  // 主星体 - 使用自身颜色
   ctx.beginPath();
   ctx.arc(sx, sy, size, 0, Math.PI * 2);
   ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${brightness})`;
@@ -225,8 +222,8 @@ function drawStar(sx, sy, size, brightness, twinkle, z, freq, phase, starObj) {
     ctx.globalAlpha = pulse;
     ctx.beginPath();
     ctx.arc(sx, sy, size * 1.35, 0, Math.PI * 2);
-    // 光晕颜色稍偏白，但仍带主色调
-    ctx.fillStyle = `rgba(${Math.min(255, r+40)}, ${Math.min(255, g+40)}, ${Math.min(255, b+40)}, ${brightness * 0.45})`;
+    // 光晕稍偏白，但保留主色调
+    ctx.fillStyle = `rgba(${Math.min(255, r+50)}, ${Math.min(255, g+50)}, ${Math.min(255, b+50)}, ${brightness * 0.45})`;
     ctx.fill();
     ctx.globalAlpha = 1;
   }

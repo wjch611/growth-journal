@@ -85,12 +85,22 @@
     </div>
   </nav>
 
-  <!-- 星空调节触发按钮（右上角，默认显示） - 完全保留原有样式和效果 -->
-  <button id="starfield-toggle-btn" title="调节星空" aria-label="展开星空调节">
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-    </svg>
-  </button>
+  <!-- 星空调节触发按钮（右上角，默认显示） - 形状已替换为“十字星光”，位置、特效、行为未变 -->
+
+
+  <!-- 星空调节触发按钮（右上角，默认显示） - 十字星光形状 -->
+<button id="starfield-toggle-btn" title="调节星空" aria-label="展开星空调节">
+  <svg viewBox="0 0 48 48" width="24" height="24" fill="currentColor" aria-hidden="true">
+    <!-- 四条尖光束 / 菱形光角 -->
+    <polygon points="24,2 26,18 24,16 22,18" />
+    <polygon points="24,46 26,30 24,32 22,30" />
+    <polygon points="2,24 18,26 16,24 18,22" />
+    <polygon points="46,24 30,26 32,24 30,22" />
+    <!-- 中心小亮点 -->
+    <circle cx="24" cy="24" r="2" fill="currentColor"/>
+  </svg>
+</button>
+
 
   <!-- 优化后的星空调节面板：更小巧、压缩布局（不改触发按钮和出现动画） -->
   <div id="starfield-controls">
@@ -210,7 +220,8 @@
           right: 16px;
           width: 48px;
           height: 48px;
-          border-radius: 50%;
+          /* 将圆形改为非圆形（保留大小、位置与视觉特效） */
+          border-radius: 8px;
           background: linear-gradient(135deg, rgba(40,40,80,0.75), rgba(20,20,50,0.75));
           backdrop-filter: blur(12px);
           border: 1px solid rgba(167,139,250,0.35);

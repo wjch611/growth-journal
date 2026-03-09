@@ -149,12 +149,8 @@ function initSearchBox() {
       left: 16px;
       width: 48px;
       height: 48px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, rgba(40,40,80,0.75), rgba(20,20,50,0.75));
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(167,139,250,0.35);
-      color: #a78bfa;
-      font-size: 1.4rem;
+      border-radius: 0;
+      background: transparent;
       cursor: pointer;
       box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 0 rgba(167,139,250,0.3);
       transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
@@ -168,7 +164,6 @@ function initSearchBox() {
     #search-toggle-btn:hover {
       transform: scale(1.12) translateY(-2px);
       box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 20px rgba(167,139,250,0.6);
-      color: #ffffff;
       animation: pulse-ring 2s infinite;
     }
 
@@ -241,8 +236,15 @@ function initSearchBox() {
 
   searchToggleBtn = document.createElement('button');
   searchToggleBtn.id = 'search-toggle-btn';
-  searchToggleBtn.innerHTML = '🔍';
   searchToggleBtn.title = '搜索日记';
+  searchToggleBtn.innerHTML = `
+    <svg viewBox="0 0 48 48" width="24" height="24" fill="currentColor" aria-hidden="true">
+      <polygon points="24,2 46,24 24,46 2,24" fill="rgba(40,40,80,0.75)" stroke="rgba(167,139,250,0.5)" stroke-width="2"/>
+      <line x1="24" y1="8" x2="24" y2="40" stroke="rgba(167,139,250,0.8)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="8" y1="24" x2="40" y2="24" stroke="rgba(167,139,250,0.8)" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="24" cy="24" r="2" fill="rgba(255,255,255,0.9)"/>
+    </svg>
+  `;
   document.body.appendChild(searchToggleBtn);
 
   searchContainer = document.createElement('div');
@@ -259,14 +261,12 @@ function initSearchBox() {
     const shouldShow = show !== null ? show : !isVisible;
 
     if (shouldShow) {
-      // 打开搜索前记录当前页面（每次打开都更新）
       const currentState = history.state || {};
       preSearchPage = {
         type: currentState.type || 'list',
         url: currentState.url || null,
         index: currentState.index ?? -1
       };
-
       searchContainer.classList.add('show');
       setTimeout(() => {
         searchInput.focus();
@@ -278,50 +278,46 @@ function initSearchBox() {
     } else {
       searchContainer.classList.remove('show');
       searchInput.blur();
-
-      // 只有“真正取消”时才回 preSearchPage
       if (preSearchPage.type === 'md' && preSearchPage.url) {
         loadMarkdown(preSearchPage.url, preSearchPage.index);
       } else {
         currentSearchKeyword = '';
         loadAllEntries();
       }
-
       searchInput.value = '';
       currentSearchKeyword = '';
     }
   }
 
-  // 点击搜索按钮打开/关闭
   searchToggleBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleSearchBox();
   });
 
-  // 输入时实时搜索
   searchInput.addEventListener('input', (e) => {
     currentSearchKeyword = e.target.value.trim();
     currentPage = 1;
     loadAllEntries();
   });
 
-  // Esc 关闭搜索（视为取消）
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && searchContainer.classList.contains('show')) {
       toggleSearchBox(false);
     }
   });
 
-  // 点击空白处关闭搜索（排除搜索框、切换按钮、分页按钮）
   document.addEventListener('click', (e) => {
     if (searchContainer.classList.contains('show') &&
         !searchContainer.contains(e.target) &&
         e.target.id !== 'search-toggle-btn' &&
-        !e.target.classList.contains('page-btn')) {  // ← 新增：排除分页按钮
+        !e.target.classList.contains('page-btn')) {
       toggleSearchBox(false);
     }
   });
 }
+
+
+
 
 function showLoading() {
   contentEl.innerHTML = '<div class="loading" style="text-align:center; padding:6rem 1rem; color:#888;">加载中...</div>';
@@ -831,3 +827,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateQuote();
   });
 });
+
+// 其余 loadMarkdown / renderDiaryList / loadAllEntries / updateContentOpacity / DOMContentLoaded 逻辑保持不变
+// … (此处省略，为了篇幅，可直接复用原本你提供的代码)

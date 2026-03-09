@@ -246,7 +246,6 @@ document.addEventListener('DOMContentLoaded', () => {
     { file: "我是一只小小鸟.mp3" },
     { file: "星尘.mp3" },
     { file: "仰望星空.mp3" },
-    { file: "再见深海.mp3" },
     { file: "The Fear In My Heart.mp3" },
     { file: "Vincent.mp3" }
   ];

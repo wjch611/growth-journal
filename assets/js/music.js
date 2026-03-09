@@ -1,4 +1,4 @@
-// assets/js/music.js - 音乐球自由 + 被黑洞吸附播放（完整优化版 - 蓝色线更细微 + 靠近时恢复原牵引线）
+// assets/js/music.js - 音乐球自由 + 被黑洞吸附播放（完整优化版 - 蓝色线更细微 + 靠近时恢复原牵引线 + 显示当前曲目）
 
 document.addEventListener('DOMContentLoaded', () => {
   const toggleBtn = document.getElementById('music-toggle-btn');
@@ -8,6 +8,23 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!toggleBtn || !panel || !audio) {
     console.error('音乐控件元素缺失');
     return;
+  }
+
+  // ==================== 添加显示当前音乐名称元素 ====================
+  let currentTrackDisplay = document.getElementById('current-track-name');
+  if (!currentTrackDisplay) {
+    currentTrackDisplay = document.createElement('div');
+    currentTrackDisplay.id = 'current-track-name';
+    currentTrackDisplay.style.cssText = `
+      color: #fff; 
+      font-size: 14px; 
+      text-align: center; 
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    `;
+    panel.insertBefore(currentTrackDisplay, panel.firstChild);
   }
 
   const widget = document.createElement('div');
@@ -170,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // 事件绑定（不变）
+  // 事件绑定
   toggleBtn.addEventListener('mousedown', (e) => { startDrag(e.clientX, e.clientY); });
   document.addEventListener('mousemove', (e) => { doDrag(e.clientX, e.clientY); });
   document.addEventListener('mouseup', stopDrag);
@@ -211,31 +228,69 @@ document.addEventListener('DOMContentLoaded', () => {
   const pauseIcon = toggleMusicBtn?.querySelector('.pause');
   const loopIcon = modeBtn?.querySelector('.icon-loop');
   const randomIcon = modeBtn?.querySelector('.icon-random');
+  const modeStatus = document.getElementById('mode-status');
 
-  const playlist = [{ file: "贝加尔湖畔.mp3" }];
+  const playlist = [
+    { file: "北戴河之歌.mp3" },
+    { file: "贝加尔湖畔.mp3" },
+    { file: "不要慌太阳下山有月光.mp3" },
+    { file: "向往.mp3" },
+    { file: "理想三旬.mp3" },
+    { file: "猎户星座.mp3" },
+    { file: "没有理想的人不伤心.mp3" },
+    { file: "七月上.mp3" },
+    { file: "如果当时.mp3" },
+    { file: "如果有来生.mp3" },
+    { file: "世间美好与你环环相扣.mp3" },
+    { file: "送你一朵小红花.mp3" },
+    { file: "我是一只小小鸟.mp3" },
+    { file: "星尘.mp3" },
+    { file: "仰望星空.mp3" },
+    { file: "再见深海.mp3" },
+    { file: "The Fear In My Heart.mp3" },
+    { file: "Vincent.mp3" }
+  ];
+
   let currentIndex = 0;
   let isRandom = localStorage.getItem('musicRandom') === 'true';
   let isPlaying = false;
 
-  if (randomIcon && loopIcon) {
-    randomIcon.style.display = isRandom ? 'block' : 'none';
-    loopIcon.style.display = isRandom ? 'none' : 'block';
+  // ==================== 更新模式 UI ====================
+  function updateModeUI() {
+    if (randomIcon && loopIcon) {
+      randomIcon.style.display = isRandom ? 'block' : 'none';
+      loopIcon.style.display = isRandom ? 'none' : 'block';
+    }
+    if (modeStatus) modeStatus.textContent = isRandom ? '随机' : '单曲循环';
+    audio.loop = !isRandom;
+    if (modeBtn) {
+      modeBtn.title = isRandom ? '当前：随机（点击切换到单曲循环）' : '当前：单曲循环（点击切换到随机）';
+    }
   }
-  audio.volume = 1.0;
+
+  function updateCurrentTrackName() {
+    if (currentTrackDisplay && playlist[currentIndex]) {
+      currentTrackDisplay.textContent = playlist[currentIndex].file.replace(/\.mp3$/, '');
+    }
+  }
 
   function loadAndPlay(index) {
     if (index < 0 || index >= playlist.length) return;
     currentIndex = index;
     audio.src = `assets/music/${playlist[index].file}`;
-    if (isPlaying) audio.play().catch(() => {});
     localStorage.setItem('lastMusicIndex', currentIndex);
+    updateCurrentTrackName(); // 每次加载新曲目更新显示
+    if (isPlaying) audio.play().catch(() => {});
   }
 
   function playNext() {
-    let nextIndex = isRandom ? Math.floor(Math.random() * playlist.length) : (currentIndex + 1) % playlist.length;
-    if (isRandom && playlist.length > 1) {
-      while (nextIndex === currentIndex) nextIndex = Math.floor(Math.random() * playlist.length);
+    if (!isRandom) {
+      try { audio.currentTime = 0; } catch (e) {}
+      if (isPlaying) audio.play().catch(()=>{});
+      return;
     }
+    let nextIndex = isRandom ? Math.floor(Math.random() * playlist.length) : (currentIndex + 1) % playlist.length;
+    if (isRandom && playlist.length > 1) while (nextIndex === currentIndex) nextIndex = Math.floor(Math.random() * playlist.length);
     loadAndPlay(nextIndex);
   }
 
@@ -245,19 +300,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (isPlaying) {
         audio.pause();
-        if (playIcon && pauseIcon) {
-          playIcon.style.display = 'block';
-          pauseIcon.style.display = 'none';
-        }
-        toggleBtn.style.animationPlayState = 'paused';
+        if (playIcon && pauseIcon) { playIcon.style.display='block'; pauseIcon.style.display='none'; }
+        toggleBtn.style.animationPlayState='paused';
         if (navBall) navBall.classList.remove('star-mode');
       } else {
         audio.play().catch(err => console.log('播放失败:', err));
-        if (playIcon && pauseIcon) {
-          playIcon.style.display = 'none';
-          pauseIcon.style.display = 'block';
-        }
-        toggleBtn.style.animationPlayState = 'running';
+        if (playIcon && pauseIcon) { playIcon.style.display='none'; pauseIcon.style.display='block'; }
+        toggleBtn.style.animationPlayState='running';
         if (navBall) navBall.classList.add('star-mode');
       }
       isPlaying = !isPlaying;
@@ -265,42 +314,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (prevBtn) prevBtn.addEventListener('click', () => {
-    let p = currentIndex - 1;
-    if (p < 0) p = playlist.length - 1;
+    if (!isRandom) { try{audio.currentTime=0;}catch(e){} if(isPlaying) audio.play().catch(()=>{}); return; }
+    let p = currentIndex - 1; if(p<0) p = playlist.length-1;
     loadAndPlay(p);
   });
 
   if (nextBtn) nextBtn.addEventListener('click', playNext);
 
-  if (modeBtn) {
-    modeBtn.addEventListener('click', () => {
-      isRandom = !isRandom;
-      localStorage.setItem('musicRandom', isRandom);
-      if (randomIcon && loopIcon) {
-        randomIcon.style.display = isRandom ? 'block' : 'none';
-        loopIcon.style.display = isRandom ? 'none' : 'block';
-      }
-    });
-  }
+  if (modeBtn) modeBtn.addEventListener('click', () => {
+    isRandom = !isRandom;
+    localStorage.setItem('musicRandom', isRandom);
+    updateModeUI();
+  });
 
   audio.onended = playNext;
 
   const savedIndex = parseInt(localStorage.getItem('lastMusicIndex'));
-  if (!isNaN(savedIndex) && savedIndex >= 0 && savedIndex < playlist.length) {
-    currentIndex = savedIndex;
-    loadAndPlay(currentIndex);
-  }
+  if (!isNaN(savedIndex) && savedIndex>=0 && savedIndex<playlist.length) { currentIndex=savedIndex; loadAndPlay(currentIndex); }
+  else { loadAndPlay(currentIndex); }
 
-  audio.onplay = () => {
-    toggleBtn.style.animationPlayState = 'running';
-    haloAnimating = true;
-    animateHalo();
-  };
-  audio.onpause = () => {
-    toggleBtn.style.animationPlayState = 'paused';
-    haloAnimating = true;
-    animateHalo();
-  };
+  updateModeUI();
+
+  audio.onplay = () => { toggleBtn.style.animationPlayState='running'; haloAnimating=true; animateHalo(); };
+  audio.onpause = () => { toggleBtn.style.animationPlayState='paused'; haloAnimating=true; animateHalo(); };
 
   // ==================== 旋转动画 ====================
   const style = document.createElement('style');
@@ -310,78 +346,66 @@ document.addEventListener('DOMContentLoaded', () => {
   `;
   document.head.appendChild(style);
 
-  if (isPlaying) toggleBtn.style.animationPlayState = 'running';
+  if (isPlaying) toggleBtn.style.animationPlayState='running';
 
   // ==================== 磁吸 + 光环跳动 + 牵引线 ====================
   const navBall = document.getElementById('sidebar-toggle-btn');
   const musicBall = document.getElementById('music-toggle-btn');
   const connectionSVG = document.getElementById('magnet-connection');
   const TRIGGER_DISTANCE = 300, MAX_GLOW_DISTANCE = 140, MERGE_DISTANCE = 40;
-  let haloAnimating = false, audioCtx, analyser, dataArray;
+  let haloAnimating=false, audioCtx, analyser, dataArray;
 
-  function getCenter(e) {
-    const r = e.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  }
+  function getCenter(e) { const r=e.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2}; }
 
   function animateHalo() {
     if (!connectionSVG) return;
-    const c1 = getCenter(navBall), c2 = getCenter(musicBall);
-    const dx = c2.x - c1.x, dy = c2.y - c1.y;
-    const distance = Math.hypot(dx, dy);
-    const isMerged = distance <= MERGE_DISTANCE;
+    const c1=getCenter(navBall), c2=getCenter(musicBall);
+    const dx=c2.x-c1.x, dy=c2.y-c1.y;
+    const distance=Math.hypot(dx,dy);
+    const isMerged = distance<=MERGE_DISTANCE;
     let outerR, innerR;
 
-    if (!isPlaying && isMerged) {
-      outerR = 50; innerR = 25;
-    } else {
+    if (!isPlaying && isMerged) { outerR=50; innerR=25; }
+    else {
       if (!audioCtx && isPlaying) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx = new (window.AudioContext||window.webkitAudioContext)();
         const src = audioCtx.createMediaElementSource(audio);
         analyser = audioCtx.createAnalyser();
         src.connect(analyser);
         analyser.connect(audioCtx.destination);
-        analyser.fftSize = 64;
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.fftSize=64;
+        dataArray=new Uint8Array(analyser.frequencyBinCount);
       }
       if (isPlaying && analyser) {
         analyser.getByteFrequencyData(dataArray);
-        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        const ampFactor = isMerged ? 1.45 : 0.95;
-        outerR = 16 + avg * 0.55 * ampFactor;
-        innerR = 8 + avg * 0.32 * ampFactor;
-      } else {
-        outerR = 25; innerR = 12;
-      }
+        const avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length;
+        const ampFactor = isMerged?1.45:0.95;
+        outerR=16+avg*0.55*ampFactor;
+        innerR=8+avg*0.32*ampFactor;
+      } else { outerR=25; innerR=12; }
     }
 
-    let boxShadow = '';
-    let showLongBlueLine = false;
+    let boxShadow='';
+    let showLongBlueLine=false;
 
-    if (isPlaying) {
-      // 蓝色光环（仅未吸附 + 播放中）
-      if (!isMerged) {
-        const blueIntensity = 12 + (dataArray ? dataArray.reduce((a,b)=>a+b,0)/dataArray.length * 0.6 : 0);
-        boxShadow = `
+    if(isPlaying) {
+      if(!isMerged){
+        const blueIntensity=12+(dataArray?dataArray.reduce((a,b)=>a+b,0)/dataArray.length*0.6:0);
+        boxShadow=`
           0 0 25px rgba(103,232,249,0.65),
           0 0 55px rgba(165,243,252,0.45),
           0 0 95px rgba(103,232,249,0.3),
           0 0 150px rgba(165,243,252,0.18)
         `;
       }
-
-      // 播放中 + 距离远 → 显示细蓝线
-      if (distance >= TRIGGER_DISTANCE) {
-        showLongBlueLine = true;
-      }
+      if(distance>=TRIGGER_DISTANCE) showLongBlueLine=true;
     }
 
-    // 原有紫红光环（合并或非播放）
-    if (isMerged || !isPlaying) {
-      let normalized = isMerged ? 1 : 1 - Math.min(distance / TRIGGER_DISTANCE, 1);
-      if (isPlaying) {
-        if (isMerged) {
-          boxShadow = `
+    if(isMerged||!isPlaying){
+      let normalized=isMerged?1:1-Math.min(distance/TRIGGER_DISTANCE,1);
+      if(isPlaying){
+        if(isMerged){
+          boxShadow=`
             0 0 28px rgba(236,72,153,0.55),
             0 0 60px rgba(217,70,239,0.45),
             0 0 100px rgba(168,85,247,0.38),
@@ -390,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
             inset 0 0 22px rgba(255,255,255,0.18)
           `;
         } else {
-          boxShadow = `
+          boxShadow=`
             0 0 22px rgba(192,132,252,0.6),
             0 0 50px rgba(232,121,249,0.5),
             0 0 85px rgba(244,114,182,0.38),
@@ -414,15 +438,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 连接线逻辑：优先原牵引线，其次蓝细线
     if (isMerged) {
-      // 合并状态：显示原合并圆
       connectionSVG.innerHTML = `
         <defs><filter id="mergeGlow"><feGaussianBlur stdDeviation="9" result="blur"/>
-        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter></defs>
         <circle cx="${c2.x}" cy="${c2.y}" r="${outerR}" fill="rgba(236,72,153,0.65)" filter="url(#mergeGlow)"/>
         <circle cx="${c2.x}" cy="${c2.y}" r="${innerR}" fill="rgba(168,85,247,0.8)" filter="url(#mergeGlow)"/>
       `;
     } else if (distance < TRIGGER_DISTANCE) {
-      // 靠近但未合并：显示原彩色牵引线
       let normalized = 1 - Math.min(distance / TRIGGER_DISTANCE, 1);
       const lineOpacity = normalized * 0.9;
       const lineWidth = 2 + normalized * 16;
@@ -434,25 +457,23 @@ document.addEventListener('DOMContentLoaded', () => {
             <stop offset="100%" stop-color="rgba(167,139,250,${lineOpacity})" />
           </linearGradient>
           <filter id="glowLine"><feGaussianBlur stdDeviation="4" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
         </defs>
-        <line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" stroke="url(#lineGrad)" stroke-width="${lineWidth}" stroke-linecap="round" filter="url(#glowLine)" />
-        <circle cx="${c1.x}" cy="${c1.y}" r="${3 + normalized * 6}" fill="rgba(255,182,193,0.9)" filter="url(#glowLine)" />
-        <circle cx="${c2.x}" cy="${c2.y}" r="${3 + normalized * 6}" fill="rgba(255,182,193,0.9)" filter="url(#glowLine)" />
+        <line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" 
+          stroke="url(#lineGrad)" stroke-width="${lineWidth}" stroke-linecap="round" filter="url(#glowLine)" />
+        <circle cx="${c1.x}" cy="${c1.y}" r="${3+normalized*6}" fill="rgba(255,182,193,0.9)" filter="url(#glowLine)" />
+        <circle cx="${c2.x}" cy="${c2.y}" r="${3+normalized*6}" fill="rgba(255,182,193,0.9)" filter="url(#glowLine)" />
       `;
     } else if (showLongBlueLine) {
-      // 播放中 + 距离远：显示细蓝线
-      const lineOpacity = 0.45;
       connectionSVG.innerHTML = `
         <defs>
           <filter id="longLineGlow"><feGaussianBlur stdDeviation="2.5" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
         </defs>
         <line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" 
-              stroke="rgba(103,232,249,${lineOpacity})" 
-              stroke-width="1.0" 
-              stroke-linecap="round" 
-              filter="url(#longLineGlow)" />
+          stroke="rgba(103,232,249,0.45)" stroke-width="1.0" stroke-linecap="round" filter="url(#longLineGlow)" />
       `;
     } else {
       connectionSVG.innerHTML = '';

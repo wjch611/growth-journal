@@ -1,4 +1,3 @@
-
 /* style.css - 完整美化版（保留所有逻辑，强化视觉表现） */
 
 :root {
@@ -181,7 +180,7 @@ body {
   box-shadow: 0 4px 22px rgba(120, 140, 255, 0.4);
 }
 
-/* ==================== 音乐控件：极致美化版 ==================== */
+/* ==================== 音乐控件：极致美化版（增大音乐球） ==================== */
 #music-widget {
   position: fixed;
   z-index: 10010;
@@ -200,58 +199,60 @@ body {
   cursor: grabbing;
 }
 
-/* 音乐球美化 */
+/* 音乐球美化 - 增大到 72px */
 #music-toggle-btn {
-  width: 58px;
-  height: 58px;
+  width: 72px;                    /* ← 增大 */
+  height: 72px;                   /* ← 增大 */
   border: none;
   border-radius: 50%;
   background: linear-gradient(145deg, #1e1e4a, #0f0f2d);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);    /* 略微增强模糊 */
   color: var(--accent);
-  font-size: 24px;
+  font-size: 32px;                /* 图标字体增大 */
   cursor: grab;
-  box-shadow: 0 0 15px rgba(167, 139, 250, 0.2), 0 8px 25px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.25), 0 10px 35px rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(167, 139, 250, 0.3);
+  border: 1px solid rgba(167, 139, 250, 0.35);
   position: relative;
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-/* 音乐球呼吸特效 */
+/* 音乐球呼吸特效 - 幅度和光环匹配新尺寸 */
 #music-toggle-btn::after {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: -10%;                    /* 光环范围更大 */
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, transparent 70%);
-  animation: music-pulse 3s infinite;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.18) 0%, transparent 70%);
+  animation: music-pulse 3.2s infinite;
 }
 
 @keyframes music-pulse {
   0% {
     transform: scale(1);
-    opacity: 0.5;
+    opacity: 0.55;
   }
   50% {
-    transform: scale(1.15);
-    opacity: 0.2;
+    transform: scale(1.22);
+    opacity: 0.22;
   }
   100% {
     transform: scale(1);
-    opacity: 0.5;
+    opacity: 0.55;
   }
 }
 
 #music-toggle-btn:hover {
   color: #ffffff;
-  border-color: rgba(167, 139, 250, 0.6);
-  box-shadow: 0 0 20px rgba(167, 139, 250, 0.4), 0 10px 30px rgba(0, 0, 0, 0.6);
+  border-color: rgba(167, 139, 250, 0.65);
+  box-shadow: 0 0 30px rgba(167, 139, 250, 0.5), 0 12px 40px rgba(0, 0, 0, 0.65);
+  transform: scale(1.12);
 }
 
-/* 面板美化 */
+/* 面板美化 - 弹出位置向左偏移，避免与大球重叠 */
 #music-panel {
   position: absolute;
   padding: 12px;
@@ -276,11 +277,11 @@ body {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  width: 50px;
-  height: 50px;
+  width: 72px;                    /* ← 同步增大 */
+  height: 72px;                   /* ← 同步增大 */
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
   background-color: transparent;
   display: flex;
   align-items: center;
@@ -290,7 +291,7 @@ body {
 }
 
 #music-toggle-btn:hover {
-  transform: scale(1.1);
+  transform: scale(1.12);
 }
 
 #music-toggle-btn svg {
@@ -309,7 +310,7 @@ body {
 #music-toggle-btn.is-playing {
   animation: disk-rotate 5s linear infinite;
   border-color: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.35);
 }
 
 #music-toggle-btn.is-playing:hover {
@@ -317,25 +318,25 @@ body {
 }
 
 #music-panel.panel-right {
-  right: 72px;
+  right: 100px;                   /* ← 增大球后，向左偏移更多，避免重叠 */
   top: 50%;
   transform: translateY(-50%) scale(1);
 }
 
 #music-panel.panel-left {
-  left: 72px;
+  left: 100px;
   top: 50%;
   transform: translateY(-50%) scale(1);
 }
 
 #music-panel.panel-bottom {
-  bottom: 72px;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%) scale(1);
 }
 
 #music-panel.panel-top {
-  top: 72px;
+  top: 100px;
   left: 50%;
   transform: translateX(-50%) scale(1);
 }
@@ -507,8 +508,8 @@ body {
     max-width: 280px;
   }
   #music-toggle-btn {
-    width: 52px;
-    height: 52px;
+    width: 60px;
+    height: 60px;
   }
   .btn {
     width: 40px;
@@ -680,144 +681,159 @@ body {
   margin: 4rem 0;
 }
 
+
+
 /* ===============================
-   导航球：黑洞形态
+   导航球：黑洞形态（优化版 + 淡光子环）
    =============================== */
 
 #sidebar-toggle-btn {
-
   position: fixed;
   left: 1.5rem;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10000;
 
-  width: 58px;
-  height: 58px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
 
   cursor: grab;
   user-select: none;
 
-  border: 1px solid rgba(167,139,250,0.35);
+  border: none;
 
-  /* 黑洞主体 */
+  /* 黑洞主体：纯黑 + 极暗过渡 */
   background:
-  radial-gradient(circle at center,
-    #000000 0px,
-    #000000 6px,       /* 中央奇点（小黑点） */
-    #020012 18px,
-    #0b0030 26px,
-    rgba(120,80,255,0.45) 36px,
-    rgba(120,80,255,0.18) 45px,
-    transparent 52px
-  );
+    radial-gradient(circle at center,
+      #000000 0%,
+      #000000 24%,                /* 更大纯黑区 */
+      #02000c 40%,                /* 近乎黑的深蓝紫 */
+      #08001c 58%,
+      rgba(70, 30, 160, 0.18) 75%,
+      rgba(100, 50, 200, 0.06) 88%,
+      transparent 100%
+    );
 
   box-shadow:
-  inset 0 0 25px #000,
-  0 0 18px rgba(120,80,255,0.45);
+    inset 0 0 45px #000000,
+    0 0 40px rgba(90, 50, 200, 0.3);
 
   overflow: hidden;
-
-  transition:
-  transform .3s ease,
-  box-shadow .3s ease;
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
 
-
-/* 黑洞吸积盘旋转 */
-
-#sidebar-toggle-btn::before{
-
-  content:"";
-  position:absolute;
-  inset:-40%;
-
+/* 主吸积盘（明亮不对称光带） */
+#sidebar-toggle-btn::before {
+  content: "";
+  position: absolute;
+  inset: -65%;
+  border-radius: 50%;
   background:
-  conic-gradient(
-    rgba(120,80,255,0.6),
-    transparent,
-    rgba(120,80,255,0.4),
-    transparent
-  );
-
-  filter: blur(12px);
-
-  animation: blackhole-spin 8s linear infinite;
+    conic-gradient(
+      from 45deg,
+      transparent 0deg 70deg,
+      rgba(240, 160, 50, 0.75) 70deg 95deg,     /* 暖橙主亮带 */
+      rgba(180, 100, 220, 0.6) 95deg 135deg,    /* 紫过渡 */
+      rgba(120, 60, 220, 0.4) 135deg 200deg,
+      transparent 200deg 360deg
+    );
+  filter: blur(16px);
+  opacity: 0.9;
+  animation: blackhole-spin 14s linear infinite;
+  pointer-events: none;
+  z-index: 1;
 }
 
-@keyframes blackhole-spin{
+/* 淡光子环（n=1 photon ring） - 很细、稍外、锐利 */
+#sidebar-toggle-btn::after {
+  content: "";
+  position: absolute;
+  inset: -85%;                        /* 更外层 */
+  border-radius: 50%;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0deg 172deg,
+      rgba(255, 245, 220, 0.65) 172deg 188deg,   /* 极细亮段 ~16deg */
+      rgba(255, 220, 180, 0.5) 188deg 200deg,
+      transparent 200deg 360deg
+    );
+  filter: blur(5px);                  /* 小模糊，保持细锐 */
+  opacity: 0.55;                      /* 很淡 */
+  animation: photon-ring-spin 10s linear infinite reverse;  /* 反向旋转，增加动态 */
+  pointer-events: none;
+  z-index: 2;
+}
 
+/* 可选：极淡的 n=2 次级光子环（更外、更细、更淡） */
+#sidebar-toggle-btn > .photon-ring-2 {  /* 如果想加，用一个额外 class 或伪元素 */
+  /* 或者直接用另一个伪元素，但浏览器只支持 ::before/::after */
+  /* 这里省略，如果你想要我可以再加一个 wrapper div 的方式 */
+}
+
+/* 旋转动画（主吸积盘慢旋转） */
+@keyframes blackhole-spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
-
 }
 
+/* 光子环旋转（稍快或反向，制造不对称） */
+@keyframes photon-ring-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+/* 悬停：增强光环 */
+#sidebar-toggle-btn:hover {
+  transform: translateY(-50%) scale(1.10);
+  box-shadow:
+    inset 0 0 55px #000000,
+    0 0 65px rgba(120, 70, 240, 0.5);
+}
+
+/* 拖动无过渡 */
+#sidebar-toggle-btn.dragging {
+  transition: none !important;
+}
 
 /* ===============================
-   吸附后：白色恒星
+   吸附后：白色恒星（微调兼容）
    =============================== */
 
-#sidebar-toggle-btn.star-mode{
-
+#sidebar-toggle-btn.star-mode {
   background:
-  radial-gradient(circle,
-    #ffffff 0%,
-    #ffffff 8%,
-    #f5f7ff 18%,
-    rgba(255,255,255,0.9) 28%,
-    rgba(255,255,255,0.6) 45%,
-    rgba(255,255,255,0.3) 60%,
-    rgba(255,255,255,0.08) 75%,
-    transparent 80%
-  );
+    radial-gradient(circle at center,
+      #ffffff 0%,
+      #ffffff 14%,
+      #fffef5 28%,
+      rgba(255,255,240,0.9) 45%,
+      rgba(255,240,200,0.7) 65%,
+      rgba(255,220,160,0.35) 85%,
+      transparent 100%
+    ) !important;
 
   border: none;
 
   box-shadow:
-  0 0 25px rgba(255,255,255,0.95),
-  0 0 60px rgba(255,255,255,0.8),
-  0 0 120px rgba(255,255,255,0.6),
-  0 0 200px rgba(255,255,255,0.4);
+    0 0 45px rgba(255,255,255,0.98),
+    0 0 100px rgba(255,240,180,0.92),
+    0 0 200px rgba(255,200,120,0.7);
 
-  animation: star-pulse 3s ease-in-out infinite;
+  animation: star-pulse 2.8s ease-in-out infinite;
 }
 
-
-/* 恒星呼吸光 */
-
-@keyframes star-pulse{
-
-  0%{
-    box-shadow:
-    0 0 25px rgba(255,255,255,0.9),
-    0 0 60px rgba(255,255,255,0.7),
-    0 0 120px rgba(255,255,255,0.5);
-  }
-
-  50%{
-    box-shadow:
-    0 0 40px rgba(255,255,255,1),
-    0 0 100px rgba(255,255,255,0.9),
-    0 0 180px rgba(255,255,255,0.7);
-  }
-
-  100%{
-    box-shadow:
-    0 0 25px rgba(255,255,255,0.9),
-    0 0 60px rgba(255,255,255,0.7),
-    0 0 120px rgba(255,255,255,0.5);
-  }
-
+/* 恒星模式下覆盖吸积盘为耀斑 */
+#sidebar-toggle-btn.star-mode::before,
+#sidebar-toggle-btn.star-mode::after {
+  opacity: 0;  /* 隐藏黑洞特效，显示恒星光 */
 }
 
-
-
-
-
-
-
-
+/* 呼吸动画 */
+@keyframes star-pulse {
+  0%, 100% { box-shadow: 0 0 45px rgba(255,255,255,0.98), 0 0 100px rgba(255,240,180,0.92), 0 0 200px rgba(255,200,120,0.7); }
+  50%      { box-shadow: 0 0 70px rgba(255,255,255,1),    0 0 150px rgba(255,240,180,1),    0 0 280px rgba(255,200,120,0.9); }
+}
 
 
 
@@ -1010,4 +1026,85 @@ body {
 /* 代码块保持等宽字体（避免楷体影响代码可读性） */
 pre, code, .code-wrapper, .code-wrapper * {
   font-family: "Fira Code", "Consolas", "Courier New", monospace !important;
+}
+
+
+
+
+
+
+
+
+
+  /* 每组滑条 */
+.slider-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 滑条 */
+.slider-wrapper input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+/* 右侧控制区 */
+.right-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* 数值 */
+.right-controls span {
+  min-width: 60px;
+  text-align: right;
+  color: #bbb;
+  font-size: 0.9em;
+  font-family: monospace;
+}
+
+/* 重置按钮 */
+.reset-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 50%;
+
+  background: rgba(255,255,255,0.08);
+  color: #ccc;
+
+  font-size: 14px;
+  line-height: 1;
+
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: all 0.18s ease;
+
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* hover效果 */
+.reset-btn:hover {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+  border-color: rgba(255,255,255,0.5);
+
+  transform: scale(1.15) rotate(25deg);
+  box-shadow: 0 0 10px rgba(255,255,255,0.4);
+}
+
+.reset-btn:active {
+  transform: scale(0.9);
+  background: rgba(255,255,255,0.4);
 }

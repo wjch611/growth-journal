@@ -1,7 +1,6 @@
 // assets/js/sidebar.js
-
-// 左侧可拖动导航球 + 侧边栏展开/收起逻辑 + 合并音乐球吸附播放功能（中心对齐）
-// 新增：拖离音乐球自动停止音乐
+// 导航黑洞球：只吸附左右两侧 + 作为音乐球黑洞中心（倒反天罡优化）
+// 优化：点开导航面板时，导航球不再消失
 
 const sidebar = document.querySelector('.sidebar');
 const sidebarToggle = document.getElementById('sidebar-toggle-btn');
@@ -12,16 +11,14 @@ if (sidebar && sidebarToggle) {
   let hasDragged = false;
   let startX, startY, initialLeft, initialTop;
 
-  let isMergedWithMusic = false;   // 是否处于吸附状态
+  window.navBallMergedWithMusic = false;   // 全局状态，供 music.js 读取
 
   const sidebarGap = 12;
   const sidebarWidth = 195 + 32;
 
-  const ADSORB_DISTANCE = 300;
-  const DETACH_DISTANCE = 300;
+  const DETACH_DISTANCE = 320;
 
   const toggleSidebar = () => {
-
     const toggleRect = sidebarToggle.getBoundingClientRect();
     const centerY = toggleRect.top + toggleRect.height / 2;
 
@@ -42,24 +39,17 @@ if (sidebar && sidebarToggle) {
     }
 
     if (isShow) {
+      // 展开面板：导航球保持可见，不隐藏
       sidebar.style.left = `${hideLeft}px`;
       sidebar.classList.add('show');
-
-      requestAnimationFrame(() => {
-        sidebar.style.left = `${showLeft}px`;
-      });
-
-      sidebarToggle.style.opacity = '0';
-      sidebarToggle.style.pointerEvents = 'none';
-
+      requestAnimationFrame(() => { sidebar.style.left = `${showLeft}px`; });
+      // 移除以下两行：不再隐藏导航球
+      // sidebarToggle.style.opacity = '0';
+      // sidebarToggle.style.pointerEvents = 'none';
     } else {
-
+      // 收起面板：导航球恢复正常
       sidebar.style.left = `${showLeft}px`;
-
-      requestAnimationFrame(() => {
-        sidebar.style.left = `${hideLeft}px`;
-      });
-
+      requestAnimationFrame(() => { sidebar.style.left = `${hideLeft}px`; });
       setTimeout(() => {
         sidebar.classList.remove('show');
         sidebarToggle.style.opacity = '1';
@@ -75,245 +65,139 @@ if (sidebar && sidebarToggle) {
     }
   });
 
-  // 拖动开始
   const startDrag = (clientX, clientY) => {
-
-    if (sidebar.classList.contains('show')) return;
-
+    // 即使面板已展开，也允许拖动导航球（但不触发 toggleSidebar）
     isDragging = true;
     hasDragged = false;
-
     startX = clientX;
     startY = clientY;
-
     const rect = sidebarToggle.getBoundingClientRect();
-
     initialLeft = rect.left;
     initialTop = rect.top;
   };
 
-  // 拖动中
   const doDrag = (clientX, clientY) => {
-
     if (!isDragging) return;
-
     const dx = clientX - startX;
     const dy = clientY - startY;
-
     const moved = Math.hypot(dx, dy) > 6;
-
     if (moved) {
-
       hasDragged = true;
-
       if (!sidebarToggle.style.left) {
-
         sidebarToggle.style.left = `${initialLeft}px`;
         sidebarToggle.style.top = `${initialTop}px`;
         sidebarToggle.style.transform = 'none';
       }
-
       let newLeft = initialLeft + dx;
       let newTop = initialTop + dy;
 
-      newLeft = Math.max(10, Math.min(window.innerWidth - 72, newLeft));
-      newTop = Math.max(10, Math.min(window.innerHeight - 72, newTop));
+      // 只限制左右边界，上下自由
+      newLeft = Math.max(10, Math.min(window.innerWidth - 82, newLeft));
+      // newTop 不限制
 
       sidebarToggle.style.left = `${newLeft}px`;
       sidebarToggle.style.top = `${newTop}px`;
-
       sidebarToggle.classList.add('dragging');
     }
   };
 
   const stopDrag = () => {
-
     if (!isDragging) return;
-
     isDragging = false;
 
     if (hasDragged) {
+      // 只吸附左右两侧
+      const rect = sidebarToggle.getBoundingClientRect();
+      const winW = window.innerWidth;
+      const dists = [
+        { side: 'left',  val: rect.left },
+        { side: 'right', val: winW - rect.right }
+      ];
+      const closest = dists.reduce((prev, curr) => prev.val < curr.val ? prev : curr);
 
-      const musicBall = document.getElementById('music-toggle-btn');
+      let targetX = rect.left;
+      let targetY = rect.top;
 
-      if (musicBall) {
+      const EDGE_GAP = 12;
 
-        const musicRect = musicBall.getBoundingClientRect();
-
-        const musicCenter = {
-          x: musicRect.left + musicRect.width / 2,
-          y: musicRect.top + musicRect.height / 2
-        };
-
-        const navRect = sidebarToggle.getBoundingClientRect();
-
-        const navCenter = {
-          x: navRect.left + navRect.width / 2,
-          y: navRect.top + navRect.height / 2
-        };
-
-        const dist = Math.hypot(
-          navCenter.x - musicCenter.x,
-          navCenter.y - musicCenter.y
-        );
-
-        if (dist < ADSORB_DISTANCE) {
-
-          const targetLeft = Math.round(musicCenter.x - navRect.width / 2);
-          const targetTop = Math.round(musicCenter.y - navRect.height / 2);
-
-          sidebarToggle.style.transform = 'none';
-          sidebarToggle.style.transition = 'left 0.28s ease, top 0.28s ease';
-
-          sidebarToggle.style.left = `${targetLeft}px`;
-          sidebarToggle.style.top = `${targetTop}px`;
-
-          const audio = document.getElementById('bgm');
-
-          if (audio) {
-
-            const playBtn = document.getElementById('toggle-music');
-
-            if (audio.paused) {
-
-              if (playBtn) {
-                playBtn.click();
-              } else {
-                audio.play().catch(() => {});
-              }
-            }
-          }
-
-          isMergedWithMusic = true;
-
-          // 增加：吸附成功时添加 star-mode（触发 CSS 星星效果）
-          sidebarToggle.classList.add('star-mode');
-
-          localStorage.setItem('sidebarPosX', targetLeft);
-          localStorage.setItem('sidebarPosY', targetTop);
-        }
+      if (closest.side === 'left') {
+        targetX = EDGE_GAP;
+      } else if (closest.side === 'right') {
+        targetX = winW - rect.width - EDGE_GAP;
       }
 
-      sidebarToggle.classList.remove('dragging');
+      sidebarToggle.style.transition = 'left 0.42s cubic-bezier(0.34,1.56,0.64,1), top 0.42s cubic-bezier(0.34,1.56,0.64,1)';
+      sidebarToggle.style.left = `${Math.round(targetX)}px`;
+      // top 不变
 
-    } else {
-
-      sidebarToggle.classList.remove('dragging');
+      localStorage.setItem('sidebarPosX', targetX);
+      localStorage.setItem('sidebarPosY', Math.round(targetY));
     }
+    sidebarToggle.classList.remove('dragging');
   };
 
-  // 鼠标
-  sidebarToggle.addEventListener('mousedown', (e) => {
-    startDrag(e.clientX, e.clientY);
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    doDrag(e.clientX, e.clientY);
-  });
-
+  // 鼠标 / 触摸事件
+  sidebarToggle.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+  document.addEventListener('mousemove', (e) => doDrag(e.clientX, e.clientY));
   document.addEventListener('mouseup', stopDrag);
 
-  // 触摸
   sidebarToggle.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
     startDrag(touch.clientX, touch.clientY);
   });
-
   document.addEventListener('touchmove', (e) => {
-
     if (isDragging && e.touches.length) {
-
       const touch = e.touches[0];
-
       doDrag(touch.clientX, touch.clientY);
-
       e.preventDefault();
     }
   });
-
   document.addEventListener('touchend', stopDrag);
 
+  // 点击页面其他地方关闭面板（不变）
   document.addEventListener('click', (e) => {
-
     if (!sidebar.contains(e.target) && e.target !== sidebarToggle) {
-
-      if (sidebar.classList.contains('show')) {
-        toggleSidebar();
-      }
+      if (sidebar.classList.contains('show')) toggleSidebar();
     }
   });
 
-  // =============================
-  // 新增：持续检测两球距离
-  // =============================
-
+  // 分离检测（停止音乐） - 不变
   function checkDetach() {
-
-    if (isMergedWithMusic) {
-
+    if (window.navBallMergedWithMusic) {
       const musicBall = document.getElementById('music-toggle-btn');
       const audio = document.getElementById('bgm');
-
       if (musicBall && audio) {
-
-        const musicRect = musicBall.getBoundingClientRect();
-        const navRect = sidebarToggle.getBoundingClientRect();
-
-        const musicCenter = {
-          x: musicRect.left + musicRect.width / 2,
-          y: musicRect.top + musicRect.height / 2
-        };
-
-        const navCenter = {
-          x: navRect.left + navRect.width / 2,
-          y: navRect.top + navRect.height / 2
-        };
-
-        const dist = Math.hypot(
-          navCenter.x - musicCenter.x,
-          navCenter.y - musicCenter.y
-        );
-
+        const musicCenter = { x: musicBall.getBoundingClientRect().left + musicBall.offsetWidth / 2, y: musicBall.getBoundingClientRect().top + musicBall.offsetHeight / 2 };
+        const navCenter = { x: sidebarToggle.getBoundingClientRect().left + sidebarToggle.offsetWidth / 2, y: sidebarToggle.getBoundingClientRect().top + sidebarToggle.offsetHeight / 2 };
+        const dist = Math.hypot(navCenter.x - musicCenter.x, navCenter.y - musicCenter.y);
         if (dist > DETACH_DISTANCE) {
-
           if (!audio.paused) {
-
             const playBtn = document.getElementById('toggle-music');
-
-            if (playBtn) {
-              playBtn.click();
-            } else {
-              audio.pause();
-            }
+            if (playBtn) playBtn.click();
+            else audio.pause();
           }
-
-          isMergedWithMusic = false;
-
-          // 增加：解除吸附时移除 star-mode（恢复黑洞效果）
+          window.navBallMergedWithMusic = false;
           sidebarToggle.classList.remove('star-mode');
         }
       }
     }
-
     requestAnimationFrame(checkDetach);
   }
-
   checkDetach();
 
   // 恢复位置
   const savedLeft = localStorage.getItem('sidebarPosX');
   const savedTop = localStorage.getItem('sidebarPosY');
-
   if (savedLeft !== null && savedTop !== null) {
-
-    const leftVal = parseInt(savedLeft);
-    const topVal = parseInt(savedTop);
-
-    if (!isNaN(leftVal) && !isNaN(topVal)) {
-
-      sidebarToggle.style.left = leftVal + 'px';
-      sidebarToggle.style.top = topVal + 'px';
-      sidebarToggle.style.transform = 'none';
-    }
+    sidebarToggle.style.left = savedLeft + 'px';
+    sidebarToggle.style.top = savedTop + 'px';
+    sidebarToggle.style.transform = 'none';
   }
+
+  // 黑洞优化：加大尺寸
+  setTimeout(() => {
+    sidebarToggle.style.width = '68px';
+    sidebarToggle.style.height = '68px';
+    sidebarToggle.style.fontSize = '28px';
+  }, 100);
 }

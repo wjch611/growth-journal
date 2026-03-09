@@ -15,7 +15,7 @@
 
   <!-- 音乐触发按钮（右侧中部小圆图标，默认显示） -->
   <button id="music-toggle-btn" title="音乐控制" aria-label="展开音乐控件">
-    <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+    <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
       <path d="M12 3v18M5 9v6M19 9v6"/>
     </svg>
   </button>
@@ -106,16 +106,43 @@
       </select>
       <span id="val-stardir">向前</span>
     </div>
-    <div class="slider-group">
-      <div>水平漂移</div>
-      <input type="range" id="ctrl-hdrift" min="-0.8" max="0.8" step="0.02" value="0">
-      <span id="val-hdrift">0.0</span>
+
+<!-- 水平漂移 -->
+<div class="slider-group">
+  <label for="ctrl-hdrift">水平漂移</label>
+  <div class="slider-wrapper">
+    <input type="range" id="ctrl-hdrift" min="-2" max="2" step="0.01" value="0">
+    <div class="right-controls">
+      <span id="val-hdrift">0</span>
+      <button id="btn-reset-horizontal" class="reset-btn" title="归零">⟲</button>
     </div>
-    <div class="slider-group">
-      <div>垂直漂移</div>
-      <input type="range" id="ctrl-vdrift" min="-0.8" max="0.8" step="0.02" value="0">
-      <span id="val-vdrift">0.0</span>
+  </div>
+</div>
+
+<!-- 垂直漂移 -->
+<div class="slider-group">
+  <label for="ctrl-vdrift">垂直漂移</label>
+  <div class="slider-wrapper">
+    <input type="range" id="ctrl-vdrift" min="-2" max="2" step="0.01" value="0">
+    <div class="right-controls">
+      <span id="val-vdrift">0</span>
+      <button id="btn-reset-vertical" class="reset-btn" title="归零">⟲</button>
     </div>
+  </div>
+</div>
+
+<!-- 星空旋转 -->
+<div class="slider-group">
+  <label for="ctrl-rotation-speed">星空旋转</label>
+  <div class="slider-wrapper">
+    <input type="range" id="ctrl-rotation-speed" min="-0.02" max="0.02" step="0.0005" value="0">
+    <div class="right-controls">
+      <span id="val-rotation-speed">0.0000</span>
+      <button id="btn-reset-rotation" class="reset-btn" title="归零">⟲</button>
+    </div>
+  </div>
+</div>
+
     <div class="slider-group">
       <div>流星</div>
       <input type="range" id="ctrl-meteorfreq" min="0" max="0.03" step="0.0005" value="0.006">

@@ -10,7 +10,6 @@ const getBasePath = () => {
 };
 const BASE_PATH = getBasePath();
 
-
 const fixUrl = (url) => {
   if (!url) return '';
 
@@ -313,11 +312,12 @@ function initSearchBox() {
     }
   });
 
-  // 点击空白处关闭搜索（视为取消）
+  // 点击空白处关闭搜索（排除搜索框、切换按钮、分页按钮）
   document.addEventListener('click', (e) => {
     if (searchContainer.classList.contains('show') &&
         !searchContainer.contains(e.target) &&
-        e.target.id !== 'search-toggle-btn') {
+        e.target.id !== 'search-toggle-btn' &&
+        !e.target.classList.contains('page-btn')) {  // ← 新增：排除分页按钮
       toggleSearchBox(false);
     }
   });
@@ -538,6 +538,7 @@ function loadMarkdown(url, currentIndex = -1) {
 
       contentEl.querySelectorAll('[data-entry-link]').forEach(link => {
         link.addEventListener('click', e => {
+          e.stopPropagation();  // ← 关键：阻止事件冒泡到 document，不触发关闭搜索
           e.preventDefault();
           const targetUrl = link.getAttribute('href');
           const targetIndex = allEntries.findIndex(item => {
@@ -545,6 +546,14 @@ function loadMarkdown(url, currentIndex = -1) {
             return `entries/${fname}` === targetUrl;
           });
           loadMarkdown(targetUrl, targetIndex);
+
+          // 点击文章后自动关闭搜索框（用户体验更好）
+          if (searchContainer.classList.contains('show')) {
+            searchContainer.classList.remove('show');
+            searchInput.blur();
+            searchInput.value = '';
+            currentSearchKeyword = '';
+          }
         });
       });
 
@@ -663,8 +672,10 @@ function renderDiaryList(page = 1) {
     });
   });
 
+  // 分页按钮点击时，阻止冒泡，避免误判为“点击空白关闭搜索框”
   contentEl.querySelectorAll('.page-btn').forEach(btn => {
     btn.addEventListener('click', e => {
+      e.stopPropagation();  // ← 关键修复：阻止冒泡到 document
       currentPage = parseInt(e.target.dataset.page);
       renderDiaryList(currentPage);
     });
@@ -762,27 +773,61 @@ document.addEventListener('DOMContentLoaded', () => {
     opacitySlider.addEventListener('input', (e) => updateContentOpacity(e.target.value));
   }
 
+  // 格言列表（可自行扩展）
   const quotes = [
     { text: "我们都是星星的孩子。"},
     { text: "我们来自星辰，也将奔赴星辰。"},
     { text: "先拯救自己，再拯救世界。"},
-
+    { text: "我曾抬头望那一眼，便再无法忘记那片星空"},
   ];
 
   let currentQuoteIndex = 0;
   const quoteElement = document.getElementById('quote-content');
   const container = document.getElementById('quote-container');
 
+  let lastRefreshTime = 0;  // 上次刷新时间戳（毫秒）
+  let quoteTimer = null;    // 用于可重置的 10s 计时器
+
+  function scheduleNextQuote() {
+    if (quoteTimer) clearTimeout(quoteTimer);
+    quoteTimer = setTimeout(() => {
+      updateQuote();
+    }, 10000);
+  }
+
   function updateQuote() {
+    const now = Date.now();
+    if (now - lastRefreshTime < 1000) return;  // 1秒内禁止重复刷新
+
+    lastRefreshTime = now;
+
+    // 清理并重置下一次定时
+    if (quoteTimer) {
+      clearTimeout(quoteTimer);
+      quoteTimer = null;
+    }
+
     container.classList.add('quote-fade');
     setTimeout(() => {
       const quote = quotes[currentQuoteIndex];
-      quoteElement.innerText = `“${quote.text}”`;
+      if (quoteElement) quoteElement.innerText = `“${quote.text}”`;
       currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
       container.classList.remove('quote-fade');
+
+      // 在每次实际刷新后重启 10s 倒计时
+      scheduleNextQuote();
     }, 500);
   }
 
+  // 初始显示第一条并启动可重置计时器
   updateQuote();
-  setInterval(updateQuote, 10000);
+
+  // 新增：鼠标右键单击（contextmenu） → 刷新下一条格言（1秒冷却）
+  document.addEventListener('click', (e) => {
+    // 阻止默认右键菜单（可选，如果你希望保留右键菜单，可以注释掉这行）
+    // e.preventDefault();
+
+    // 右键任何地方都刷新（包括内容区、按钮等），但有1秒冷却
+    updateQuote();
+  });
 });

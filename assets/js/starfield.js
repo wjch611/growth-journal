@@ -1,4 +1,6 @@
 // starfield.js - 完整优化版：更真实梦幻星云 + 刷新按钮 + 星星动态频率跳动（每颗幅度不同） + 新增总星星数量调节 + 真实星星颜色分布（最新比例）
+// 新增：星空旋转选项（围绕中心圆周旋转） + 三个“归零”按钮（垂直/水平/旋转速度快速归零）
+
 const canvas = document.getElementById('starfield');
 const ctx = canvas.getContext('2d');
 
@@ -9,35 +11,36 @@ let nebulae = [];
 
 // ──────────────── 可调节参数 ────────────────
 const CONFIG = {
-  starDirection: 1,              // 星星移动方向（1 = 向前/靠近，-1 = 向后/远离）
-  starSpeedAbs: 0.6,             // 星星基础移动速度（绝对值，越高越快）
-  horizontalDrift: 0.0,          // 星星整体水平漂移（正数向右，负数向左）
-  verticalDrift: 0.0,            // 星星整体垂直漂移（正数向下，负数向上）
-  starCount: 2000,               // 总星星数量（影响密度，建议 800~2500）
-  meteorFrequency: 0.008,        // 流星出现的概率（每帧概率，越高流星越频繁）
-  meteorSpeedMin: 12,            // 流星最小速度（像素/帧）
-  meteorSpeedMax: 22,            // 流星最大速度（像素/帧）
-  meteorAngleMin: Math.PI / 4,   // 流星出现角度范围 - 最小值（弧度，45°）
-  meteorAngleMax: Math.PI * 1.2, // 流星出现角度范围 - 最大值（弧度，约216°）
-  maxZ: 2200,                    // 星星 Z 轴最大深度（影响远近感，越大远星越多）
+  starDirection: 1,
+  starSpeedAbs: 0.6,
+  horizontalDrift: 0.0,
+  verticalDrift: 0.0,
+  starCount: 2000,
+  meteorFrequency: 0.008,
+  meteorSpeedMin: 12,
+  meteorSpeedMax: 22,
+  meteorAngleMin: -Math.PI / 6,
+  meteorAngleMax: Math.PI / 6,
+  maxZ: 2200,
 
-  // 星云相关
-  enableNebula: true,            // 是否启用星云效果（true=开启，false=关闭）——已改为默认开启
-  nebulaCount: 8,                // 同时存在的星云数量（建议 3~10）
-  nebulaSpeed: 0.08              // 星云整体漂移速度（越小越慢，越梦幻）
+  // 旋转速度（弧度/帧），默认 0，负值逆时针，正值顺时针
+  rotationSpeed: 0.0,
+
+  enableNebula: true,
+  nebulaCount: 8,
+  nebulaSpeed: 0.08
 };
 
-// 真实星星颜色分布（按你指定的最新比例）
+// 真实星星颜色分布
 const STAR_COLORS = [
-  { color: [245, 245, 255],   weight: 0.55 },   // 白色 / 蓝白（最常见，略带冷调）
-  { color: [255, 245, 220],   weight: 0.22 },   // 黄白
-  { color: [255, 235, 180],   weight: 0.10 },   // 黄色
-  { color: [255, 200, 120],   weight: 0.07 },   // 橙色
-  { color: [255, 160,  90],   weight: 0.04 },   // 橙红
-  { color: [220,  80,  60],   weight: 0.02 }    // 红色（少但醒目）
+  { color: [245, 245, 255],   weight: 0.55 },
+  { color: [255, 245, 220],   weight: 0.22 },
+  { color: [255, 235, 180],   weight: 0.10 },
+  { color: [255, 200, 120],   weight: 0.07 },
+  { color: [255, 160,  90],   weight: 0.04 },
+  { color: [220,  80,  60],   weight: 0.02 }
 ];
 
-// 累积权重，用于随机选择颜色
 const colorWeights = STAR_COLORS.reduce((acc, curr) => {
   acc.push((acc[acc.length - 1] || 0) + curr.weight);
   return acc;
@@ -58,7 +61,6 @@ function createStars() {
   for (let i = 0; i < CONFIG.starCount; i++) {
     const baseFreq = 0.2 + Math.random() * 3.8;
 
-    // 根据权重随机选择星星颜色
     const rand = Math.random();
     let colorIndex = 0;
     for (let j = 0; j < colorWeights.length; j++) {
@@ -80,7 +82,13 @@ function createStars() {
       baseFreq: baseFreq,
       freqAmplitude: 0.3 + Math.random() * 0.5,
       twinkle: Math.random() > 0.68,
-      baseColor: baseColor  // 保存基础颜色 [r,g,b]
+      baseColor: baseColor,
+      // 用于圆周旋转的初始角度和半径
+      angle: Math.random() * Math.PI * 2,
+      radius: Math.hypot(
+        (Math.random() * width - width / 2),
+        (Math.random() * height - height / 2)
+      ) * 1.2
     });
   }
 }
@@ -112,12 +120,25 @@ function createNebulae() {
 // ──────────────── 流星生成 ────────────────
 function createShootingStar() {
   if (Math.random() < CONFIG.meteorFrequency) {
-    const angle = CONFIG.meteorAngleMin + Math.random() * (CONFIG.meteorAngleMax - CONFIG.meteorAngleMin);
+    let angle = CONFIG.meteorAngleMin + Math.random() * (CONFIG.meteorAngleMax - CONFIG.meteorAngleMin);
+
+    if (Math.random() < 0.5) {
+      angle += Math.PI;
+    }
+
     const speed = Math.random() * (CONFIG.meteorSpeedMax - CONFIG.meteorSpeedMin) + CONFIG.meteorSpeedMin;
     const vx = Math.cos(angle) * speed;
     const vy = Math.sin(angle) * speed;
-    let startX = vx > 0 ? -150 : width + 150;
-    let startY = vy > 0 ? -150 : height + 150;
+
+    let startX, startY;
+    if (vx >= 0) {
+      startX = -150;
+      startY = height * (0.3 + Math.random() * 0.4);
+    } else {
+      startX = width + 150;
+      startY = height * (0.3 + Math.random() * 0.4);
+    }
+
     shootingStars.push({
       x: startX, y: startY, vx, vy,
       length: Math.random() * 130 + 70,
@@ -171,7 +192,7 @@ function drawNebula(n) {
   ctx.globalAlpha = 1;
 }
 
-// ──────────────── 绘制十字光晕（使用星星自身颜色） ────────────────
+// ──────────────── 绘制十字光晕 ────────────────
 function drawCrossFlare(sx, sy, size, brightness, z, baseColor) {
   if (z < 650 || size > 0.9) return;
 
@@ -204,7 +225,7 @@ function drawCrossFlare(sx, sy, size, brightness, z, baseColor) {
   ctx.restore();
 }
 
-// ──────────────── 绘制星星（动态频率 + 真实颜色） ────────────────
+// ──────────────── 绘制星星 ────────────────
 function drawStar(sx, sy, size, brightness, twinkle, z, freq, phase, starObj) {
   const [r, g, b] = starObj.baseColor;
 
@@ -222,7 +243,6 @@ function drawStar(sx, sy, size, brightness, twinkle, z, freq, phase, starObj) {
     ctx.globalAlpha = pulse;
     ctx.beginPath();
     ctx.arc(sx, sy, size * 1.35, 0, Math.PI * 2);
-    // 光晕稍偏白，但保留主色调
     ctx.fillStyle = `rgba(${Math.min(255, r+50)}, ${Math.min(255, g+50)}, ${Math.min(255, b+50)}, ${brightness * 0.45})`;
     ctx.fill();
     ctx.globalAlpha = 1;
@@ -240,7 +260,21 @@ function animate() {
 
   const time = Date.now() / 190;
 
+  // 应用旋转（围绕中心）
+  const rotationDelta = CONFIG.rotationSpeed;
+  const cx = width / 2;
+  const cy = height / 2;
+
   stars.forEach(star => {
+    // 旋转：更新 x, y
+    const dx = star.x - cx;
+    const dy = star.y - cy;
+    const newAngle = Math.atan2(dy, dx) + rotationDelta;
+    const dist = Math.hypot(dx, dy);
+    star.x = cx + Math.cos(newAngle) * dist;
+    star.y = cy + Math.sin(newAngle) * dist;
+
+    // 原有深度移动 + 漂移
     const effectiveSpeed = CONFIG.starDirection * CONFIG.starSpeedAbs;
     star.z -= effectiveSpeed;
     star.x += CONFIG.horizontalDrift * 2;
@@ -344,6 +378,47 @@ if(s_vdrift) {
   };
 }
 
+const s_rotation = document.getElementById('ctrl-rotation-speed');
+const v_rotation = document.getElementById('val-rotation-speed');
+if (s_rotation && v_rotation) {
+  s_rotation.value = CONFIG.rotationSpeed;
+  v_rotation.textContent = CONFIG.rotationSpeed.toFixed(4);
+
+  s_rotation.oninput = () => {
+    CONFIG.rotationSpeed = parseFloat(s_rotation.value);
+    v_rotation.textContent = CONFIG.rotationSpeed.toFixed(4);
+  };
+}
+
+// ──────────────── 新增：归零按钮 ────────────────
+const btnResetVertical = document.getElementById('btn-reset-vertical');
+const btnResetHorizontal = document.getElementById('btn-reset-horizontal');
+const btnResetRotation = document.getElementById('btn-reset-rotation');
+
+if (btnResetVertical) {
+  btnResetVertical.onclick = () => {
+    CONFIG.verticalDrift = 0.0;
+    if (s_vdrift) s_vdrift.value = 0;
+    if (v_vdrift) v_vdrift.textContent = '0';
+  };
+}
+
+if (btnResetHorizontal) {
+  btnResetHorizontal.onclick = () => {
+    CONFIG.horizontalDrift = 0.0;
+    if (s_hdrift) s_hdrift.value = 0;
+    if (v_hdrift) v_hdrift.textContent = '0';
+  };
+}
+
+if (btnResetRotation) {
+  btnResetRotation.onclick = () => {
+    CONFIG.rotationSpeed = 0.0;
+    if (s_rotation) s_rotation.value = 0;
+    if (v_rotation) v_rotation.textContent = '0.0000';
+  };
+}
+
 const s_meteor = document.getElementById('ctrl-meteorfreq');
 const v_meteor = document.getElementById('val-meteorfreq');
 if(s_meteor) {
@@ -374,7 +449,6 @@ if (s_nebula) {
     }
   };
 
-  // 页面加载时默认开启星云，并初始化
   s_nebula.checked = true;
   CONFIG.enableNebula = true;
   if (v_nebula) v_nebula.textContent = '已启用';
@@ -398,7 +472,7 @@ if (s_starcount && v_starcount) {
   s_starcount.oninput = () => {
     CONFIG.starCount = parseInt(s_starcount.value, 10);
     v_starcount.textContent = CONFIG.starCount;
-    createStars();  // 实时重新生成星星（颜色也会重新随机分配）
+    createStars();
   };
 }
 

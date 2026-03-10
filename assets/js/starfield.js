@@ -194,7 +194,7 @@ function drawNebula(n) {
 
 // ──────────────── 绘制十字光晕 ────────────────
 function drawCrossFlare(sx, sy, size, brightness, z, baseColor) {
-  if (z < 650 || size > 0.9) return;
+  if (z < 500 || size > 1.0) return;
 
   const flareLength = size * (3.8 + Math.random() * 3.2);
   const flareOpacity = brightness * (0.32 + Math.random() * 0.38);

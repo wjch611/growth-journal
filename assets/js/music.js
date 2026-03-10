@@ -260,10 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
       randomIcon.style.display = isRandom ? 'block' : 'none';
       loopIcon.style.display = isRandom ? 'none' : 'block';
     }
-    if (modeStatus) modeStatus.textContent = isRandom ? '随机' : '单曲循环';
+    if (modeStatus) modeStatus.textContent = isRandom ? '随机' : '单曲';
     audio.loop = !isRandom;
     if (modeBtn) {
-      modeBtn.title = isRandom ? '当前：随机（点击切换到单曲循环）' : '当前：单曲循环（点击切换到随机）';
+      modeBtn.title = isRandom ? '当前：随机（点击切换到单曲循环）' : '当前：单曲（点击切换到随机）';
     }
   }
 

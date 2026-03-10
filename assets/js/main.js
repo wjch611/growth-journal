@@ -827,6 +827,3 @@ document.addEventListener('DOMContentLoaded', () => {
     updateQuote();
   });
 });
-
-// 其余 loadMarkdown / renderDiaryList / loadAllEntries / updateContentOpacity / DOMContentLoaded 逻辑保持不变
-// … (此处省略，为了篇幅，可直接复用原本你提供的代码)

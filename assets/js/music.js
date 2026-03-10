@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadAndPlay(index) {
     if (index < 0 || index >= playlist.length) return;
     currentIndex = index;
-    audio.src = `assets/music/${playlist[index].file}`;
+    audio.src = `assets/musics/${playlist[index].file}`;
     localStorage.setItem('lastMusicIndex', currentIndex);
     updateCurrentTrackName(); // 每次加载新曲目更新显示
     if (isPlaying) audio.play().catch(() => {});
